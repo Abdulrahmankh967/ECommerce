@@ -1,0 +1,10 @@
+﻿using _1_Repository.Data;
+
+namespace _1_Repository.Interfaces
+{
+    public interface IProductRepository : IGenericRepository<Product>
+    {
+        Task<List<Product>> GetProductsByCategory(int categoryId);
+    }
+
+}
