@@ -34,4 +34,10 @@ public class PaymentRepository : IPaymentRepository
     {
         _context.Payments.Remove(entity);
     }
+
+    public async Task<Payment?> GetByOrderIdAsync(int orderId)
+    {
+        return await _context.Payments
+            .FirstOrDefaultAsync(p => p.OrderId == orderId);
+    }
 }

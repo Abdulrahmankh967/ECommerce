@@ -1,11 +1,11 @@
-﻿using _1_Repository.Data;
+using _1_Repository.Data;
 using _1_Repository.Interfaces;
 using _1_Repository.Context;
 using Microsoft.EntityFrameworkCore;
 
 namespace _1_Repository.Repositories;
 
-public class OrderItemRepository : IGenericRepository<OrderItem>
+public class OrderItemRepository : IOrderItemRepository
 {
     private readonly AppDbContext _context;
     public OrderItemRepository(AppDbContext context)

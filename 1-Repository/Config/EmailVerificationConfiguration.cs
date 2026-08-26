@@ -32,9 +32,12 @@ public class EmailVerificationConfiguration : IEntityTypeConfiguration<EmailVeri
         builder.Property(e => e.CreatedAt)
                .IsRequired();
 
-
         builder.HasOne<Customer>()
-               .WithOne()
-               .HasForeignKey<EmailVerification>(e => e.CustomerId);
+       .WithMany()
+       .HasForeignKey(r => r.CustomerId)
+       .OnDelete(DeleteBehavior.Cascade);
+
+
+
     }
 }

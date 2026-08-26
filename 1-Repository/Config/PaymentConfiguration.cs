@@ -12,7 +12,7 @@ namespace _1_Repository.Config
             builder.HasKey(p => p.Id);
 
             builder.Property(p => p.Id)
-                .ValueGeneratedNever();
+                .ValueGeneratedOnAdd();
 
             builder.Property(p => p.Amount)
                 .HasColumnType("decimal(18,2)");

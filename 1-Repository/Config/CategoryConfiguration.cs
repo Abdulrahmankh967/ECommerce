@@ -12,7 +12,7 @@ namespace _1_Repository.Config
             builder.HasKey(c => c.Id);
 
             builder.Property(c => c.Id)
-                .ValueGeneratedNever();
+                .ValueGeneratedOnAdd();
 
             builder.Property(c => c.Name)
                 .HasColumnType("NVARCHAR")

@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace _1_Repository.Repositories;
 
-public class OrderRepository : IGenericRepository<Order>
+public class OrderRepository : IOrderRepository
 {
     private readonly AppDbContext _context;
     public OrderRepository(AppDbContext context)
@@ -33,6 +33,20 @@ public class OrderRepository : IGenericRepository<Order>
     public void Delete(Order entity)
     {
         _context.Orders.Remove(entity);
+    }
+
+    public async Task<List<Order>> GetCustomerOrdersAsync(int customerId)
+    {
+        return await _context.Orders
+            .Where(o => o.CustomerId == customerId)
+            .ToListAsync();
+    }
+
+    public async Task<Order?> GetOrderWithItemsAsync(int orderId)
+    {
+        return await _context.Orders
+            .Include(o => o.OrderItems)
+            .FirstOrDefaultAsync(o => o.Id == orderId);
     }
 }
 

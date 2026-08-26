@@ -4,7 +4,10 @@ namespace _1_Repository.Interfaces
 {
     public interface IOrderRepository : IGenericRepository<Order>
     {
-        Task<List<Order>> GetOrdersByCustomer(int customerId);
+        Task<List<Order>> GetCustomerOrdersAsync(int customerId);
+        Task<Order?> GetOrderWithItemsAsync(int orderId);
+
+
     }
 
 }

@@ -2,6 +2,7 @@
 
 public class EmailVerification
 {
+
     public int Id { get; set; }
 
     public int CustomerId { get; set; }

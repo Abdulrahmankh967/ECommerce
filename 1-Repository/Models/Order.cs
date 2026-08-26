@@ -1,4 +1,4 @@
-﻿
+
 
 namespace _1_Repository.Data
 {
@@ -17,5 +17,9 @@ namespace _1_Repository.Data
         public ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
 
         public Payment? Payment { get; set; }
+
+        public Shipment? Shipment { get; set; }
+
+        public CouponUsage? CouponUsage { get; set; }
     }
 }

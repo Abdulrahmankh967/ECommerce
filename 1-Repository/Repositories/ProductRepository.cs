@@ -1,4 +1,4 @@
-﻿using _1_Repository.Data;
+using _1_Repository.Data;
 using _1_Repository.Interfaces;
 using _1_Repository.Context;
 using Microsoft.EntityFrameworkCore;
@@ -35,9 +35,12 @@ public class ProductRepository : IProductRepository
         _context.Products.Remove(entity);
     }
 
-    Task<List<Product>> IProductRepository.GetProductsByCategory(int categoryId)
+    public async Task<List<Product>> GetProductsByCategory(int categoryId)
     {
-        throw new NotImplementedException();
+        return await _context.Products
+            .Where(p => p.CategoryId == categoryId)
+            .AsNoTracking()
+            .ToListAsync();
     }
 }
 

@@ -13,6 +13,8 @@ namespace _1_Repository.Config
             {
                 x.Id,
             });
+            builder.Property(x=>x.Id)
+                .ValueGeneratedOnAdd();
 
             builder.Property(x => x.UnitPrice)
                 .HasColumnType("decimal(18,2)");

@@ -1,78 +1,51 @@
 using _1_Repository.Context;
-using _1_Repository.Interfaces;
 using _1_Repository.Repositories;
 using _2_Services.Services;
 using _3_RestfulAPI.Authorization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Serilog;
 using System.Security.Claims;
 using System.Text;
 using System.Threading.RateLimiting;
 
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Debug()
+    .WriteTo.Seq(builder.Configuration["Seq:Url"])
+    .CreateLogger();
 
+
+builder.Host.UseSerilog();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
-        // TokenValidationParameters define how incoming JWTs will be validated.
+        var jwtSettings = builder.Configuration
+            .GetSection("Jwt")
+            .Get<JwtSettings>()!;
+
         options.TokenValidationParameters = new TokenValidationParameters
         {
-            // Ensures the token was issued by a trusted issuer.
             ValidateIssuer = true,
-
-
-            // Ensures the token is intended for this API (audience check).
             ValidateAudience = true,
-
-
-            // Ensures the token has not expired.
             ValidateLifetime = true,
-
-
-            // Ensures the token signature is valid and was signed by the API.
             ValidateIssuerSigningKey = true,
 
+            ValidIssuer = jwtSettings.Issuer,
+            ValidAudience = jwtSettings.Audience,
 
-            // The expected issuer value (must match the issuer used when creating the JWT).
-            ValidIssuer = "CustomerApi",
-
-
-            // The expected audience value (must match the audience used when creating the JWT).
-            ValidAudience = "CustomerApiUsers",
-
-
-            // The secret key used to validate the JWT signature.
-            // This must be the same key used when generating the token.
-            IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes("THIS_IS_A_VERY_SECRET_KEY_123456")),
-
-            //ClockSkew = TimeSpan.Zero // Optional: Set clock skew to zero to prevent token expiration issues due to time differences.
-
-        };
-
-        options.Events = new JwtBearerEvents
-        {
-            OnAuthenticationFailed = context =>
-            {
-                Console.WriteLine("JWT FAILED:");
-                Console.WriteLine(context.Exception.Message);
-
-                return Task.CompletedTask;
-            }
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.SecretKey))
         };
     });
 
 
-// ===============================
-// Authorization Configuration
-// ===============================
 builder.Services.AddSwaggerGen(options =>
 {
     // ===============================
@@ -216,26 +189,50 @@ builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+
+builder.Services.AddHttpContextAccessor();
+
+
+builder.Services.AddScoped<AuditInterceptor>();
+
+
+builder.Services.AddDbContext<AppDbContext>((serviceProvider, options) =>
+{
+    var auditInterceptor = serviceProvider.GetRequiredService<AuditInterceptor>();
+
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
+           .AddInterceptors(auditInterceptor);
+});
 
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
-builder.Services.AddScoped<CustomerService>();
-builder.Services.AddScoped<ICustomerRepository, CustomerRepository>();
+builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"));
+builder.Services.Configure<SmtpSettings>(builder.Configuration.GetSection("Smtp"));
 
-builder.Services.AddScoped<IProductRepository, ProductRepository>();
-builder.Services.AddScoped<ProductService>();
-
-builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
-builder.Services.AddScoped<RefreshTokenService>();
-
-builder.Services.AddScoped<IEmailVerificationRepository, EmailVerificationRepository>();
-builder.Services.AddScoped<EmailVerificationService>();
-builder.Services.AddScoped<EmailService>();
-
+builder.Services.AddScoped<IPasswordHasher,Argon2PasswordHasher>();
+builder.Services.AddScoped<ITokenService, TokenService>();
 
 builder.Services.AddSingleton<IAuthorizationHandler, CustomerOwnerOrAdminHandler>();
+
+// Repository
+builder.Services.Scan(scan => scan
+    .FromAssemblyOf<CustomerRepository>()
+    .AddClasses(classes => classes.Where(type =>
+        type.Name.EndsWith("Repository")))
+    .AsImplementedInterfaces()
+    .WithScopedLifetime());
+
+// Service
+builder.Services.Scan(scan => scan
+    .FromAssemblyOf<CustomerService>()
+    .AddClasses(classes => classes.Where(type =>
+        type.Name.EndsWith("Service")))
+    .AsSelf()
+    .WithScopedLifetime());
+
+
+
 
 builder.Services.AddAuthorization(options =>
 {
@@ -258,14 +255,61 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-    
-app.UseHttpsRedirection();  
+
+app.UseExceptionHandler(errorApp =>
+{
+    errorApp.Run(async context =>
+    {
+        var exceptionHandler = context.Features.Get<IExceptionHandlerFeature>();
+
+        var exception = exceptionHandler?.Error;
+
+        var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
+
+        logger.LogError(exception,"Unhandled exception. Method={Method}, Path={Path}",context.Request.Method,context.Request.Path);
+
+        var statusCode = exception switch
+        {
+            BadRequestException => StatusCodes.Status400BadRequest,
+
+            UnauthorizedException => StatusCodes.Status401Unauthorized,
+
+            ForbiddenException => StatusCodes.Status403Forbidden,
+
+            NotFoundException => StatusCodes.Status404NotFound,
+
+            ConflictException => StatusCodes.Status409Conflict,
+
+            _ =>
+                StatusCodes.Status500InternalServerError
+        };
+
+        var message = statusCode == 500
+            ? "An unexpected error occurred."
+            : exception?.Message;
+
+        context.Response.StatusCode = statusCode;
+        context.Response.ContentType = "application/json";
+
+        await context.Response.WriteAsJsonAsync(new
+        {
+            status = statusCode,
+            message
+        });
+    });
+});
+
+
+app.UseHttpsRedirection();
+
+app.UseSerilogRequestLogging();
 
 app.UseCors("CustomerApiPolicy");
 
@@ -274,6 +318,25 @@ app.UseRateLimiter();
 app.UseAuthentication();  
 
 app.UseAuthorization();
+
+
+app.Use(async (context, next) =>
+{
+    await next();
+
+
+    if (context.Response.StatusCode == StatusCodes.Status403Forbidden)
+    {
+        var userId = context.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "anonymous";
+        var ip = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        var path = context.Request.Path.ToString();
+
+
+        // ✅ Centralized security log for authorization abuse
+        app.Logger.LogWarning("Forbidden access. UserId={UserId}, Path={Path}, IP={IP}",userId,path,ip);
+    }
+});
+
 
 app.MapControllers();
 

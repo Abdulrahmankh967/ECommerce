@@ -1,10 +1,8 @@
 ﻿using _2_Services.Services;
-using MailKit.Net.Smtp;
-using MimeKit;
 using System.Security.Cryptography;
 using System.Text;
 
-public class EmailVerificationService
+public class EmailVerificationService : EmailVerificationHelper
 {
     private readonly IEmailVerificationRepository _emailVerificationRepository;
 
@@ -29,21 +27,20 @@ public class EmailVerificationService
     public void ValidateEntity(EmailVerification entity)
     {
         if (entity == null)
-           throw new ArgumentNullException(nameof(entity), "EmailVerification entity cannot be null.");
+            throw new InvalidOperationException("EmailVerification entity cannot be null.");
 
         if (string.IsNullOrWhiteSpace(entity.VerificationId))
-            throw new ArgumentException("VerificationId cannot be null or empty.", nameof(entity.VerificationId));
+            throw new InvalidOperationException("EmailVerification has an invalid VerificationId.");
 
         if (string.IsNullOrWhiteSpace(entity.CodeHash))
-            throw new ArgumentException("CodeHash cannot be null or empty.", nameof(entity.CodeHash));
+            throw new InvalidOperationException("EmailVerification has an invalid CodeHash.");
 
         if (entity.ExpiresAt <= DateTime.UtcNow)
-            throw new ArgumentException("ExpiresAt must be a future date.", nameof(entity.ExpiresAt));
+            throw new InvalidOperationException("EmailVerification has an invalid expiration date.");
 
         if (entity.Attempts < 0)
-            throw new ArgumentException("Attempts cannot be negative.", nameof(entity.Attempts));
+            throw new InvalidOperationException("EmailVerification has an invalid Attempts value.");
     }
-
 
     public async Task<EmailVerification?> GetEmailVerificationByIdAsync(string verificationId)
     {
@@ -54,14 +51,11 @@ public class EmailVerificationService
     {
         var customer = await _customerService.GetCustomerByIdAsync(customerId);
 
-        if (customer == null)
-            throw new ArgumentException("Customer not found.");
+        var verificationId =EmailVerificationHelper.GenerateVerificationId();
 
-        var verificationId = GenerateVerificationId();
+        var code =EmailVerificationHelper.GenerateVerificationCode();
 
-        var code = GenerateVerificationCode();
-
-        var codeHash = Convert.ToBase64String(HashCode(code));
+        var codeHash = Convert.ToBase64String(EmailVerificationHelper.Hash(code));
 
         var emailVerification = new EmailVerification
         {
@@ -86,40 +80,34 @@ public class EmailVerificationService
         
     }
 
-    public string GenerateVerificationId()
-    {
-        return Guid.NewGuid().ToString();
-    }
-    public string GenerateVerificationCode()
-    {
-        int code = RandomNumberGenerator.GetInt32(100000, 1000000);
-
-        return code.ToString();
-    }
-    private byte[] HashCode(string code)
-    {
-        return SHA256.HashData(Encoding.UTF8.GetBytes(code));
-    }
-
     public async Task<bool> VerifyCodeAsync(string verificationId, string code)
     {
+        ValidateVerificationIdAndCode(verificationId, code);
+
         var emailVerification = await _emailVerificationRepository.GetVerificationByIdAsync(verificationId);
-        (bool flowControl, bool value) = ValidateOTP(emailVerification);
-        if (!flowControl)
+
+        if (emailVerification == null)
         {
-            return value;
+            throw new BadRequestException("Invalid verification ID.");
         }
 
-        var inputHash = HashCode(code);
+        
+        if (!ValidateOTP(emailVerification))
+        {
+            return false;
+        }
+
+        var inputHash = EmailVerificationHelper.Hash(code);
+
 
         var storedHash = Convert.FromBase64String(emailVerification.CodeHash);
 
-        if (CryptographicOperations.FixedTimeEquals(inputHash,storedHash))
+        if (CryptographicOperations.FixedTimeEquals(inputHash, storedHash))
         {
             emailVerification.UsedAt = DateTime.UtcNow;
             _emailVerificationRepository.Update(emailVerification);
             await _unitOfWork.SaveChangesAsync();
-            return true; 
+            return true;
         }
 
         else
@@ -131,60 +119,35 @@ public class EmailVerificationService
         }
     }
 
-    private (bool flowControl, bool value) ValidateOTP(EmailVerification? emailVerification)
+    private static void ValidateVerificationIdAndCode(string verificationId, string code)
     {
-        if (emailVerification == null)
+        if (string.IsNullOrWhiteSpace(verificationId))
         {
-            throw new ArgumentException("Invalid verification ID.");
+            throw new BadRequestException("Verification ID is required.");
         }
+
+        if (string.IsNullOrWhiteSpace(code))
+        {
+            throw new BadRequestException("Verification code is required.");
+        }
+
+        if (code.Length != 6 || !code.All(char.IsDigit))
+        {
+            throw new BadRequestException("Verification code must be a 6-digit number.");
+        }
+    }
+
+    private bool ValidateOTP(EmailVerification emailVerification)
+    {
         if (emailVerification.UsedAt != null)
-        {
-            return (flowControl: false, value: false);
-        }
-        if(emailVerification.ExpiresAt < DateTime.UtcNow)
-        {
-            return (flowControl: false, value: false);
-        }
+            return false;
+
+        if (emailVerification.ExpiresAt <= DateTime.UtcNow)
+            return false;
+
         if (emailVerification.Attempts >= 5)
-        {
-            return (flowControl: false, value: false);
-        }
+            return false;
 
-        return (flowControl: true, value: default);
+        return true;
     }
-}   
-
-public class EmailService
-{
-    public async Task SendVerificationCodeAsync(string email,string code)
-    {
-
-        if (string.IsNullOrWhiteSpace(email))
-            throw new ArgumentException(
-                "Recipient email is empty.",
-                nameof(email));
-
-
-        var message = new MimeMessage();
-
-        message.From.Add(new MailboxAddress("Customer API","khlifatabood17@gmail.com"));
-
-        message.To.Add(MailboxAddress.Parse(email));
-
-        message.Subject = "Email Verification Code";
-
-        message.Body = new TextPart("plain")
-        {
-            Text = $"Your verification code is: {code}"
-        };
-                using var smtp = new SmtpClient();
-
-        await smtp.ConnectAsync("smtp.gmail.com",465,MailKit.Security.SecureSocketOptions.SslOnConnect);
-
-        await smtp.AuthenticateAsync("khlifatabood17@gmail.com", "rrvs mzfr exjb dmwc");
-
-        await smtp.SendAsync(message);
-
-        await smtp.DisconnectAsync(true);
-    }
-}   
+}

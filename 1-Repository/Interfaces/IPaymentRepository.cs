@@ -4,5 +4,7 @@ namespace _1_Repository.Interfaces
 {
     public interface IPaymentRepository : IGenericRepository<Payment>
     {
+        Task<Payment?> GetByOrderIdAsync(int orderId);
+
     }
 }
