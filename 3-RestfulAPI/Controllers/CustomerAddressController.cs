@@ -1,7 +1,7 @@
 ﻿using _2_Services.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace _3_RestfulAPI.Controllers
 {
@@ -17,93 +17,61 @@ namespace _3_RestfulAPI.Controllers
             _addressService = addressService;
         }
 
-
-        // GET: api/customers/me/addresses
         [HttpGet]
+        [EnableRateLimiting("LowCostLimiter")]
         [ProducesResponseType(typeof(List<CustomerAddressDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> GetAddresses()
         {
-            var customerId = User.GetUserId();
-
-            var addresses = await _addressService.GetAddressesByCustomerAsync(customerId);
-
+            var addresses = await _addressService.GetAddressesByCustomerAsync(User.GetUserId());
             return Ok(addresses);
         }
 
-
-        // GET: api/customers/me/addresses/5
         [HttpGet("{addressId:int}")]
+        [EnableRateLimiting("LowCostLimiter")]
         [ProducesResponseType(typeof(CustomerAddressDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetAddress(int addressId)
         {
-            var customerId = User.GetUserId();
-
-            var address = await _addressService.GetAddressByIdAsync(addressId,customerId);
-
-            if (address == null)
-                return NotFound();
-
-            // If CustomerAddressDto exposes CustomerId,
-            // ownership should be checked here.
-            // Otherwise, better add a customer-scoped service method.
-
+            var address = await _addressService.GetAddressByIdAsync(addressId, User.GetUserId());
             return Ok(address);
         }
 
-
-        // POST: api/customers/me/addresses
         [HttpPost]
+        [EnableRateLimiting("LowCostLimiter")]
         [ProducesResponseType(typeof(CustomerAddressDto), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> CreateAddress([FromBody] CreateCustomerAddressDto dto)
         {
-            var customerId = User.GetUserId();
-
-            var address =await _addressService.CreateAddressAsync(customerId, dto);
-
-            return CreatedAtAction(nameof(GetAddress),new { addressId = address.Id },address);
+            var address = await _addressService.CreateAddressAsync(User.GetUserId(), dto);
+            return CreatedAtAction(nameof(GetAddress), new { addressId = address.Id }, address);
         }
 
-
-        // PUT: api/customers/me/addresses/5
         [HttpPut("{addressId:int}")]
+        [EnableRateLimiting("LowCostLimiter")]
         [ProducesResponseType(typeof(CustomerAddressDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [Authorize(Roles = "admin")]
-        public async Task<IActionResult> UpdateAddress(int addressId,[FromBody] UpdateCustomerAddressDto dto)
+        public async Task<IActionResult> UpdateAddress(int addressId, [FromBody] UpdateCustomerAddressDto dto)
         {
-            var customerId = User.GetUserId();
-
-            var address =await _addressService.UpdateAddressAsync(addressId,customerId,dto);
-
+            var address = await _addressService.UpdateAddressAsync(addressId, User.GetUserId(), dto);
             return Ok(address);
         }
 
-
-        // DELETE: api/customers/me/addresses/5
         [HttpDelete("{addressId:int}")]
+        [EnableRateLimiting("LowCostLimiter")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [Authorize(Roles = "admin")]
         public async Task<IActionResult> DeleteAddress(int addressId)
         {
-            var customerId = User.GetUserId();
-
-            await _addressService.DeleteAddressAsync(addressId,customerId);
-
+            await _addressService.DeleteAddressAsync(addressId, User.GetUserId());
             return NoContent();
         }
-
-
-        
     }
 }

@@ -11,4 +11,7 @@ public static class ClaimsPrincipalExtensions
 
         return id;
     }
+
+    public static bool IsAdmin(this ClaimsPrincipal user)
+        => user.IsInRole(nameof(UserRole.admin));
 }
