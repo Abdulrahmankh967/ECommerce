@@ -18,6 +18,7 @@ namespace _3_RestfulAPI.Controllers
         }
 
         [HttpGet]
+        [Authorize]
         [EnableRateLimiting("LowCostLimiter")]
         [ProducesResponseType(typeof(CartDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]

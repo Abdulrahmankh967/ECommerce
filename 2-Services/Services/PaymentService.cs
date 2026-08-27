@@ -22,7 +22,7 @@ namespace _2_Services.Services
             if (payment == null)
                 throw new NotFoundException($"Payment with ID {id} not found.");
 
-            return MapToDto(payment);
+            return PaymentMapper.MapToDto(payment);
         }
 
         public async Task<PaymentDto?> GetPaymentByOrderIdAsync(int orderId)
@@ -34,16 +34,8 @@ namespace _2_Services.Services
             if (payment == null)
                 throw new NotFoundException($"Payment for Order ID {orderId} not found.");
 
-            return MapToDto(payment);
+            return PaymentMapper.MapToDto(payment);
         }
 
-        private static PaymentDto MapToDto(Payment p) => new PaymentDto
-        {
-            Id = p.Id,
-            Amount = p.Amount,
-            PaymentDate = p.PaymentDate,
-            Method = p.Method,
-            OrderId = p.OrderId
-        };
     }
 }

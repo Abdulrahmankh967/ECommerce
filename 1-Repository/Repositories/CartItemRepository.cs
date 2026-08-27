@@ -12,33 +12,32 @@ public class CartItemRepository : ICartItemRepository
         _context = context;
     }
 
-    public async Task<CartItem?> GetCartItemAsync(
-        int cartId,
-        int productId)
+    public async Task<CartItem?> GetCartItemAsync(int cartId,int productId)
     {
         return await _context.CartItems.FirstOrDefaultAsync(x =>
             x.CartId == cartId &&
             x.ProductId == productId);
     }
 
-    Task IGenericRepository<CartItem>.AddAsync(CartItem entity)
+    async Task IGenericRepository<CartItem>.AddAsync(CartItem entity)
     {
-        throw new NotImplementedException();
+        await _context.CartItems.AddAsync(entity);
     }
 
     void IGenericRepository<CartItem>.Delete(CartItem entity)
     {
-        throw new NotImplementedException();
+        _context.CartItems.Remove(entity);
     }
 
-    Task<List<CartItem>> IGenericRepository<CartItem>.GetAllAsync()
+    async Task<List<CartItem>> IGenericRepository<CartItem>.GetAllAsync()
     {
-        throw new NotImplementedException();
+        return await _context.CartItems.ToListAsync();
     }
 
-    Task<CartItem?> IGenericRepository<CartItem>.GetByIdAsync(int id)
+    async Task<CartItem?> IGenericRepository<CartItem>.GetByIdAsync(int id)
     {
-        throw new NotImplementedException();
+        var cartItem = await _context.CartItems.FirstOrDefaultAsync(x => x.Id == id);
+        return cartItem;
     }
 
     void IGenericRepository<CartItem>.Update(CartItem entity)

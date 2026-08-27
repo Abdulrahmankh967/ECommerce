@@ -245,11 +245,19 @@ builder.Services.AddCors(options =>
     options.AddPolicy("CustomerApiPolicy", policy =>
     {
         policy
-        .WithOrigins(
-    "http://localhost:5500",
-    "http://127.0.0.1:5500")
-        .AllowAnyHeader()
-        .AllowAnyMethod();
+            .SetIsOriginAllowed(origin =>
+            {
+                if (string.IsNullOrWhiteSpace(origin)) 
+                    return false;
+
+                if (!Uri.TryCreate(origin, UriKind.Absolute, out var uri)) 
+                    return false;
+
+                return uri.Host is "localhost" or "127.0.0.1";
+            })
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
     });
 });
 

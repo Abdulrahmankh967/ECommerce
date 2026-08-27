@@ -47,4 +47,4 @@ namespace _1_Repository.Repositories
             _context.CouponUsages.Remove(entity);
         }
     }
-}
+}   

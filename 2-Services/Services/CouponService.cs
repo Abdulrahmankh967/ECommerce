@@ -26,7 +26,7 @@ namespace _2_Services.Services
         public async Task<List<CouponDto>> GetAllCouponsAsync()
         {
             var coupons = await _couponRepository.GetAllAsync();
-            return coupons.Select(MapToDto).ToList();
+            return coupons.Select(CouponMapper.MapToDto).ToList();
         }
 
         public async Task<CouponDto?> GetCouponByIdAsync(int id)
@@ -38,7 +38,7 @@ namespace _2_Services.Services
             if (coupon == null)
                 throw new NotFoundException($"Coupon with ID {id} not found.");
 
-            return MapToDto(coupon);
+            return CouponMapper.MapToDto(coupon);
         }
 
         public async Task<CouponDto?> GetCouponByCodeAsync(string code)
@@ -47,7 +47,7 @@ namespace _2_Services.Services
                 throw new BadRequestException("Coupon code cannot be empty.");
 
             var coupon = await _couponRepository.GetByCodeAsync(code);
-            return coupon == null ? null : MapToDto(coupon);
+            return coupon == null ? null : CouponMapper.MapToDto(coupon);
         }
 
         public async Task<CouponDto> CreateCouponAsync(CreateCouponDto dto)
@@ -74,7 +74,7 @@ namespace _2_Services.Services
             await _couponRepository.AddAsync(coupon);
             await _unitOfWork.SaveChangesAsync();
 
-            return MapToDto(coupon);
+            return CouponMapper.MapToDto(coupon);
         }
 
         public async Task<CouponDto?> UpdateCouponAsync(int id, CreateCouponDto dto)
@@ -104,7 +104,7 @@ namespace _2_Services.Services
             _couponRepository.Update(coupon);
             await _unitOfWork.SaveChangesAsync();
 
-            return MapToDto(coupon);
+            return CouponMapper.MapToDto(coupon);
         }
 
         public async Task<bool> DeleteCouponAsync(int id)
@@ -143,18 +143,5 @@ namespace _2_Services.Services
 
             return coupon;
         }
-
-        private static CouponDto MapToDto(Coupon c) => new CouponDto
-        {
-            Id = c.Id,
-            Code = c.Code,
-            DiscountType = c.DiscountType,
-            DiscountValue = c.DiscountValue,
-            StartDate = c.StartDate,
-            EndDate = c.EndDate,
-            UsageLimit = c.UsageLimit,
-            TimesUsed = c.TimesUsed,
-            IsActive = c.IsActive
-        };
     }
 }

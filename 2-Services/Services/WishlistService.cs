@@ -38,7 +38,7 @@ namespace _2_Services.Services
                 };
             }
 
-            return MapToDto(wishlist);
+            return WishlistMapper.MapToDto(wishlist);
         }
 
         public async Task<WishlistDto> AddToWishlistAsync(int customerId, int productId)
@@ -81,7 +81,7 @@ namespace _2_Services.Services
             }
 
             var updated = await _wishlistRepository.GetWishlistByCustomerIdAsync(customerId);
-            return MapToDto(updated!);
+            return WishlistMapper.MapToDto(updated!);
         }
 
         public async Task<WishlistDto> RemoveFromWishlistAsync(int customerId, int wishlistItemId)
@@ -105,7 +105,7 @@ namespace _2_Services.Services
             await _unitOfWork.SaveChangesAsync();
 
             var updated = await _wishlistRepository.GetWishlistByCustomerIdAsync(customerId);
-            return MapToDto(updated!);
+            return WishlistMapper.MapToDto(updated!);
         }
 
         public async Task ClearWishlistAsync(int customerId)
@@ -122,18 +122,6 @@ namespace _2_Services.Services
             await _unitOfWork.SaveChangesAsync();
         }
 
-        private static WishlistDto MapToDto(Wishlist w) => new WishlistDto
-        {
-            Id = w.Id,
-            CustomerId = w.CustomerId,
-            Items = w.WishlistItems.Select(wi => new WishlistItemDto
-            {
-                Id = wi.Id,
-                ProductId = wi.ProductId,
-                ProductName = wi.Product?.Name ?? string.Empty,
-                UnitPrice = wi.Product?.Price ?? 0,
-                AddedAt = wi.AddedAt
-            }).ToList()
-        };
+        
     }
 }

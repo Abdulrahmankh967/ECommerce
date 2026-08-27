@@ -9,7 +9,7 @@ public class CreateCouponDto
 
     [Required(ErrorMessage = "Discount type is required.")]
     [StringLength(50, ErrorMessage = "Discount type cannot exceed 50 characters.")]
-    public string DiscountType { get; set; } = string.Empty; // e.g. "Percentage", "FixedAmount"
+    public int DiscountType { get; set; } 
 
     [Required(ErrorMessage = "Discount value is required.")]
     [Range(0.01, double.MaxValue, ErrorMessage = "Discount value must be greater than zero.")]

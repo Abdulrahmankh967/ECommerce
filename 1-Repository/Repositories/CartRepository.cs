@@ -20,20 +20,25 @@ public class CartRepository : ICartRepository
 
     public async Task<Cart?> GetCartWithItemsAsync(int customerId)
     {
-        return await _context.Carts
-            .Include(x => x.CartItems)
-                .ThenInclude(x => x.Product)
-            .FirstOrDefaultAsync(x => x.CustomerId == customerId);
+        var query = _context.Carts
+                    .Include(x => x.CartItems)
+                    .ThenInclude(x => x.Product)
+                    .Where(x => x.CustomerId == customerId);
+
+        Console.WriteLine(query.ToQueryString());
+
+        var cart = await query.FirstOrDefaultAsync();
+        return cart;
     }
 
-    Task IGenericRepository<Cart>.AddAsync(Cart entity)
+    async Task IGenericRepository<Cart>.AddAsync(Cart entity)
     {
-        throw new NotImplementedException();
+        await _context.Carts.AddAsync(entity);
     }
 
     void IGenericRepository<Cart>.Delete(Cart entity)
     {
-        throw new NotImplementedException();
+        _context.Carts.Remove(entity);
     }
 
     Task<List<Cart>> IGenericRepository<Cart>.GetAllAsync()
@@ -48,6 +53,6 @@ public class CartRepository : ICartRepository
 
     void IGenericRepository<Cart>.Update(Cart entity)
     {
-        throw new NotImplementedException();
+        _context.Carts.Update(entity);
     }
 }

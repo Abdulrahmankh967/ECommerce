@@ -72,4 +72,11 @@ public class CustomerRepository : ICustomerRepository
     {
         return await _context.Customers.FirstOrDefaultAsync(c => c.Email == email);
     }
+
+    async Task<bool> ICustomerRepository.IsEmailRegistered(string email)
+    {
+        var result =await _context.Customers.AnyAsync(c=>c.Email.Equals(email,StringComparison.OrdinalIgnoreCase));
+
+        return result;
+    }
 }

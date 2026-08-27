@@ -42,6 +42,32 @@ public class ProductRepository : IProductRepository
             .AsNoTracking()
             .ToListAsync();
     }
+    async Task<List<Product>> IProductRepository.GetProductsByIdsAsync(List<int> productIds)
+    {
+        var result = await _context.Products
+            .Where(p => productIds.Contains(p.Id))
+            .ToListAsync();
+
+        return result;
+    }
+
+    async Task<bool> IProductRepository.UpdateStocksAsync(Dictionary<int, int> productQuantities)
+    {
+        foreach (var item in productQuantities)
+        {
+            var affectedRows = await _context.Products
+                .Where(p => p.Id == item.Key && p.Stock >= item.Value)
+                .ExecuteUpdateAsync(setters =>
+                    setters.SetProperty(
+                        p => p.Stock,
+                        p => p.Stock - item.Value));
+
+            if (affectedRows == 0)
+                return false;
+        }
+
+        return true;
+    }
 }
 
 

@@ -11,5 +11,7 @@ namespace _1_Repository.Interfaces
         public Task<int> GetTotalCustomerCount();
 
         public Task<Customer?> GetCustomerByEmailAsync(string email);
+
+        public Task<bool> IsEmailRegistered(string email);
     }   
 }

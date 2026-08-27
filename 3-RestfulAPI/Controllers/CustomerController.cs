@@ -75,7 +75,7 @@ namespace _3_RestfulAPI.Controllers
             if (!authResult.Succeeded)
                 return Forbid();
 
-            var customer = await _customerService.GetCustomerWithOrders(customerId);
+            var customer = await _customerService.GetCustomerWithOrdersAsync(customerId);
             return Ok(customer);
         }
 
@@ -88,7 +88,7 @@ namespace _3_RestfulAPI.Controllers
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<IActionResult> GetCustomersByPage([FromQuery] int pageNumber, [FromQuery] int pageSize)
         {
-            var customers = await _customerService.GetCustomersByPage(pageNumber, pageSize);
+            var customers = await _customerService.GetCustomersByPageAsync(pageNumber, pageSize);
             return Ok(customers);
         }
 
@@ -150,7 +150,7 @@ namespace _3_RestfulAPI.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> ChangePassword(ChangePasswordDto dto)
         {
-            await _customerService.ChangePassword(User.GetUserId(), dto.NewPassword);
+            await _customerService.ChangePasswordAsync(User.GetUserId(), dto.NewPassword);
             return NoContent();
         }
 
@@ -164,7 +164,7 @@ namespace _3_RestfulAPI.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> DeleteCustomer(int id)
         {
-            await _customerService.DeleteCustomer(id);
+            await _customerService.DeleteCustomerAsync(id);
             return NoContent();
         }
     }

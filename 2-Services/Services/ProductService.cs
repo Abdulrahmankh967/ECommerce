@@ -22,7 +22,7 @@ namespace _2_Services.Services
         public async Task<List<ProductDTO>> GetAllProductsAsync()
         {
             var products = await _productRepository.GetAllAsync();
-            return products.Select(p => MapToDto(p)).ToList();
+            return products.Select(p => ProductMapper.MapToDto(p)).ToList();
         }
 
         public async Task<ProductDTO?> GetProductByIdAsync(int id)
@@ -34,7 +34,7 @@ namespace _2_Services.Services
             if (product == null)
                 throw new NotFoundException($"Product with ID {id} not found.");
 
-            return MapToDto(product);
+            return ProductMapper.MapToDto(product);
         }
 
         public async Task<List<ProductDTO>> GetProductsByCategoryAsync(int categoryId)
@@ -43,7 +43,7 @@ namespace _2_Services.Services
                 throw new BadRequestException("Category ID must be greater than zero.");
 
             var products = await _productRepository.GetProductsByCategory(categoryId);
-            return products.Select(p => MapToDto(p)).ToList();
+            return products.Select(p => ProductMapper.MapToDto(p)).ToList();
         }
 
         public async Task<ProductDTO> CreateProductAsync(CreateProductDto dto)
@@ -68,7 +68,7 @@ namespace _2_Services.Services
             await _productRepository.AddAsync(product);
             await _unitOfWork.SaveChangesAsync();
 
-            return MapToDto(product, category.Name);
+            return ProductMapper.MapToDto(product, category.Name);
         }
 
         public async Task<ProductDTO?> UpdateProductAsync(int id, CreateProductDto dto)
@@ -97,7 +97,7 @@ namespace _2_Services.Services
             _productRepository.Update(product);
             await _unitOfWork.SaveChangesAsync();
 
-            return MapToDto(product, category.Name);
+            return ProductMapper.MapToDto(product, category.Name);
         }
 
         public async Task<bool> DeleteProductAsync(int id)
@@ -114,16 +114,5 @@ namespace _2_Services.Services
             return true;
         }
 
-        private static ProductDTO MapToDto(Product p, string categoryName = "") => new ProductDTO
-        {
-            Id = p.Id,
-            Name = p.Name,
-            Price = p.Price,
-            Stock = p.Stock,
-            IsActive = p.IsActive,
-            ImageUrl = p.ImageUrl,
-            CategoryId = p.CategoryId,
-            CategoryName = p.Category?.Name ?? categoryName
-        };
     }
 }

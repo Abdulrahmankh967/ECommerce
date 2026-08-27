@@ -20,13 +20,13 @@ namespace _2_Services.Services
         public async Task<List<SupplierDto>> GetAllSuppliersAsync()
         {
             var suppliers = await _supplierRepository.GetAllAsync();
-            return suppliers.Select(MapToDto).ToList();
+            return suppliers.Select(SupplierMapper.MapToDto).ToList();
         }
 
         public async Task<List<SupplierDto>> GetActiveSuppliersAsync()
         {
             var suppliers = await _supplierRepository.GetActiveSuppliersAsync();
-            return suppliers.Select(MapToDto).ToList();
+            return suppliers.Select(SupplierMapper.MapToDto).ToList();
         }
 
         public async Task<SupplierDto?> GetSupplierByIdAsync(int id)
@@ -38,7 +38,7 @@ namespace _2_Services.Services
             if (supplier == null)
                 throw new NotFoundException($"Supplier with ID {id} not found.");
 
-            return MapToDto(supplier);
+            return SupplierMapper.MapToDto(supplier);
         }
 
         public async Task<SupplierDto> CreateSupplierAsync(CreateSupplierDto dto)
@@ -59,7 +59,7 @@ namespace _2_Services.Services
             await _supplierRepository.AddAsync(supplier);
             await _unitOfWork.SaveChangesAsync();
 
-            return MapToDto(supplier);
+            return  SupplierMapper.MapToDto(supplier);
         }
 
         public async Task<SupplierDto?> UpdateSupplierAsync(int id, CreateSupplierDto dto)
@@ -83,7 +83,7 @@ namespace _2_Services.Services
             _supplierRepository.Update(supplier);
             await _unitOfWork.SaveChangesAsync();
 
-            return MapToDto(supplier);
+            return SupplierMapper.MapToDto(supplier);
         }
 
         public async Task<bool> DeleteSupplierAsync(int id)
@@ -100,15 +100,6 @@ namespace _2_Services.Services
             return true;
         }
 
-        private static SupplierDto MapToDto(Supplier s) => new SupplierDto
-        {
-            Id = s.Id,
-            Name = s.Name,
-            Email = s.Email,
-            Phone = s.Phone,
-            Address = s.Address,
-            IsActive = s.IsActive,
-            CreatedAt = s.CreatedAt
-        };
+        
     }
 }

@@ -6,8 +6,6 @@ namespace _1_Repository.Interfaces
     {
         Task<List<Order>> GetCustomerOrdersAsync(int customerId);
         Task<Order?> GetOrderWithItemsAsync(int orderId);
-
-
     }
 
 }
