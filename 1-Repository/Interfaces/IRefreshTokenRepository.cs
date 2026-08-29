@@ -2,7 +2,7 @@
 
 public interface IRefreshTokenRepository : IGenericRepository<RefreshToken>
 {
-    public Task<RefreshToken> GetBySelectorAsync(string selector);
+    public Task<RefreshToken?> GetBySelectorAsync(string selector);
 
 
 

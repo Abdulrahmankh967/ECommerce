@@ -1,130 +1,180 @@
 using _1_Repository.Data;
 using _2_Services.Services;
+using Microsoft.Extensions.Logging;
 
-public class AuthenticationService
+namespace _2_Services.Services
 {
-    private readonly CustomerService _customerService;
-    private readonly EmailVerificationService _emailVerificationService;
-    private readonly RefreshTokenService _refreshTokenService;
-    private readonly IPasswordHasher _passwordHasher;
-    private readonly ITokenService _tokenService;
-
-    public AuthenticationService(CustomerService customerService,EmailVerificationService emailVerificationService,
-                                 RefreshTokenService refreshTokenService,IPasswordHasher passwordHasher,ITokenService tokenService)
+    public class AuthenticationService
     {
-        _customerService = customerService;
+        private readonly CustomerService _customerService;
+        private readonly EmailVerificationService _emailVerificationService;
+        private readonly RefreshTokenService _refreshTokenService;
+        private readonly IPasswordHasher _passwordHasher;
+        private readonly ITokenService _tokenService;
+        private readonly ILogger<AuthenticationService> _logger;
 
-        _emailVerificationService = emailVerificationService;
-
-        _refreshTokenService = refreshTokenService;
-
-        _passwordHasher = passwordHasher;
-
-        _tokenService = tokenService;
-
-    }
-    public async Task<LoginResponse?> LoginAsync(LoginRequest request)
-    {
-        var customer = await _customerService.GetCustomerByEmailAsync(request.Email);
-
-        if (customer == null)
+        public AuthenticationService(
+            CustomerService customerService,
+            EmailVerificationService emailVerificationService,
+            RefreshTokenService refreshTokenService,
+            IPasswordHasher passwordHasher,
+            ITokenService tokenService,
+            ILogger<AuthenticationService> logger)
         {
-            throw new UnauthorizedException("Invalid credentials.");
+            _customerService = customerService;
+            _emailVerificationService = emailVerificationService;
+            _refreshTokenService = refreshTokenService;
+            _passwordHasher = passwordHasher;
+            _tokenService = tokenService;
+            _logger = logger;
         }
 
-        bool isPasswordValid = _passwordHasher.Verify(request.Password, customer.PasswordHash);
 
-        if (!isPasswordValid)
-            throw new UnauthorizedException("Invalid credentials.");
-
-        var verification = await _emailVerificationService.CreateEmailVerificationAsync(customer.Id);
-
-        return new LoginResponse
+        public async Task<LoginResponse> LoginAsync(LoginRequest request)
         {
-            Message = "Login successful. Please check your email.",
-            VerificationId = verification.VerificationId
-        };
-    }
-    public async Task<VerifyOTPResponse> VerifyEmailAsync(VerifyOTPRequest request)
-    {
-        var verification = await _emailVerificationService.GetEmailVerificationByIdAsync(request.VerificationId);
+            ValidateRequestNotNull(request, "Login request cannot be null.");
 
-        if (verification == null)
-        {
-            throw new BadRequestException("Invalid verification request.");
-        }
+            _logger.LogInformation("Login attempt for email: {Email}", DataMasker.MaskEmail(request.Email));
 
-        bool isCodeValid = await _emailVerificationService.VerifyCodeAsync(request.VerificationId, request.OTP);
+            var customer = await _customerService.GetCustomerByEmailAsync(request.Email);
 
-        if (!isCodeValid)
-        {
-            throw new BadRequestException("Invalid or expired verification code.");
-        }
-
-        var customer = await _customerService.GetCustomerByIdAsync(verification.CustomerId);
-
-        if (customer == null)
-        {
-            throw new NotFoundException("Customer not found.");
-        }
-        var accessToken =  _tokenService.GenerateAccessToken(new AccessTokenData
-        {
-            UserId = customer.Id,
-            Email = customer.Email,
-            Role = customer.Role
-        });
-        var refreshToken =  _tokenService.GenerateRefreshToken();
-
-        await _refreshTokenService.AddRefreshTokenAsync(
-             new RefreshTokenRequest
-             {
-                 RefreshToken = refreshToken
-             }, customer.Id);
-
-
-        return new VerifyOTPResponse
-        {
-            Message = "Email verified successfully.",
-            AccessToken = accessToken,
-            RefreshToken = refreshToken
-        };
-    }
-
-
-    public async Task<RefreshTokenResponse> RefreshTokenAsync(RefreshTokenRequest request)
-    {
-        var storedToken = await _refreshTokenService.ValidateRefreshTokenAsync(request.RefreshToken);
-
-        if (storedToken == null)
-        {
-            throw new UnauthorizedException("Invalid refresh token.");
-        }
-
-        var customer = await _customerService.GetCustomerAuthByIdAsync(storedToken.CustomerId);
-
-        if (customer == null)
-        {
-            throw new UnauthorizedException("Customer not found.");
-        }
-
-        await _refreshTokenService.RevokeRefreshTokenAsync(request.RefreshToken);
-        var newAccessToken = _tokenService.GenerateAccessToken(new AccessTokenData
-        {
-            UserId = customer.Id,
-            Email = customer.Email,
-            Role = customer.Role
-        });
-        var newRefreshToken = _tokenService.GenerateRefreshToken();
-        await _refreshTokenService.AddRefreshTokenAsync(
-            new RefreshTokenRequest
+            
+            if (customer is null || !_passwordHasher.Verify(request.Password, customer.PasswordHash))
             {
-                RefreshToken = newRefreshToken
-            }, customer.Id);
+                _logger.LogWarning("Login failed for email: {Email}", DataMasker.MaskEmail(request.Email));
+                throw new UnauthorizedException("Invalid credentials.");
+            }
 
-        return new RefreshTokenResponse
+            var verification = await _emailVerificationService.CreateEmailVerificationAsync(customer.Id);
+
+            _logger.LogInformation("Login successful for Customer ID {CustomerId}. Verification OTP sent.", customer.Id);
+
+            return new LoginResponse
+            {
+                Message = "Login successful. Please check your email.",
+                VerificationId = verification.VerificationId
+            };
+        }
+
+        public async Task<VerifyOTPResponse> VerifyEmailAsync(VerifyOTPRequest request)
         {
-            AccessToken = newAccessToken,
-            RefreshToken = newRefreshToken
-        };
+            ValidateRequestNotNull(request, "Verification request cannot be null.");
+
+            _logger.LogInformation("Verifying OTP for VerificationId: {VerificationId}", request.VerificationId);
+
+            await ValidateOtpCodeAsync(request.VerificationId, request.OTP);
+
+            var verification = await _emailVerificationService.GetEmailVerificationByIdAsync(request.VerificationId);
+            var customer = await GetValidCustomerForAuthAsync(verification!.CustomerId);
+
+
+            var (accessToken, refreshToken) = await GenerateAndSaveTokenPairAsync(customer);
+
+            _logger.LogInformation("Email verified successfully for Customer ID {CustomerId}", customer.Id);
+
+            return new VerifyOTPResponse
+            {
+                Message = "Email verified successfully.",
+                AccessToken = accessToken,
+                RefreshToken = refreshToken
+            };
+        }
+
+        public async Task<RefreshTokenResponse> RefreshTokenAsync(RefreshTokenRequest request)
+        {
+            ValidateRequestNotNull(request, "Refresh token request cannot be null.");
+
+            if (string.IsNullOrWhiteSpace(request.RefreshToken))
+            {
+                throw new BadRequestException("Refresh token cannot be empty.");
+            }
+
+            _logger.LogDebug("Attempting to refresh access token.");
+
+            var storedToken = await _refreshTokenService.ValidateRefreshTokenAsync(request.RefreshToken);
+            if (storedToken is null)
+            {
+                _logger.LogWarning("Invalid or expired refresh token attempt.");
+                throw new UnauthorizedException("Invalid refresh token.");
+            }
+
+            var customer = await GetValidCustomerForAuthAsync(storedToken.CustomerId);
+
+            await _refreshTokenService.RevokeRefreshTokenAsync(request.RefreshToken);
+            var (newAccessToken, newRefreshToken) = await GenerateAndSaveTokenPairAsync(customer);
+
+            _logger.LogInformation("Tokens refreshed successfully for Customer ID {CustomerId}", customer.Id);
+
+            return new RefreshTokenResponse
+            {
+                AccessToken = newAccessToken,
+                RefreshToken = newRefreshToken
+            };
+        }
+
+        public async Task LogoutAsync(string refreshToken)
+        {
+            if (string.IsNullOrWhiteSpace(refreshToken))
+            {
+                throw new BadRequestException("Refresh token cannot be empty.");
+            }
+
+            await _refreshTokenService.RevokeRefreshTokenAsync(refreshToken);
+            _logger.LogInformation("Refresh token revoked successfully during logout.");
+        }
+
+
+        private static void ValidateRequestNotNull<T>(T request, string errorMessage)
+        {
+            if (request is null)
+            {
+                throw new BadRequestException(errorMessage);
+            }
+        }
+
+        private async Task ValidateOtpCodeAsync(string verificationId, string otp)
+        {
+            var verification = await _emailVerificationService.GetEmailVerificationByIdAsync(verificationId);
+            if (verification is null)
+            {
+                throw new BadRequestException("Invalid verification request.");
+            }
+
+            bool isCodeValid = await _emailVerificationService.VerifyCodeAsync(verificationId, otp);
+            if (!isCodeValid)
+            {
+                _logger.LogWarning("Invalid or expired OTP attempt for VerificationId {VerificationId}", verificationId);
+                throw new BadRequestException("Invalid or expired verification code.");
+            }
+        }
+
+        private async Task<CustomerAuthDto> GetValidCustomerForAuthAsync(int customerId)
+        {
+            var customer = await _customerService.GetCustomerAuthByIdAsync(customerId);
+            if (customer is null)
+            {
+                _logger.LogWarning("Customer ID {CustomerId} not found during authentication process.", customerId);
+                throw new UnauthorizedException("Customer not found.");
+            }
+
+            return customer;
+        }
+
+        private async Task<(string AccessToken, string RefreshToken)> GenerateAndSaveTokenPairAsync(CustomerAuthDto customer)
+        {
+            var accessToken = _tokenService.GenerateAccessToken(new AccessTokenData
+            {
+                UserId = customer.Id,
+                Email = customer.Email,
+                Role = customer.Role
+            });
+
+            var refreshToken = _tokenService.GenerateRefreshToken();
+
+            await _refreshTokenService.AddRefreshTokenAsync(refreshToken,customer.Id);
+
+            return (accessToken, refreshToken);
+        }
     }
+
 }

@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="A considered collection for everyday living." />
+    <title>Arden — Intentional essentials</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="announcement">Complimentary shipping on orders over $75 <span>•</span> Designed for the everyday</div>
+    <header class="site-header">
+      <a class="brand" href="#home" aria-label="Arden home">ARDEN<span>®</span></a>
+      <button class="menu-button" type="button" aria-label="Open navigation" aria-expanded="false">Menu</button>
+      <nav aria-label="Primary navigation"><a href="#shop">Shop</a><a href="#collections">Collections</a><a href="#journal">Journal</a></nav>
+      <div class="header-actions"><button class="text-button" id="searchButton">Search</button><button class="bag-button" id="cartButton" aria-label="Open bag">Bag <span id="cartCount">0</span></button></div>
+    </header>
+    <main id="home">
+      <section class="hero">
+        <div class="hero-copy"><p class="eyebrow">The autumn edit / 2026</p><h1>Objects with<br />a point of view.</h1><p class="hero-text">A considered collection of pieces that make the ordinary feel distinctly your own.</p><a class="button button-dark" href="#shop">Discover the collection <span>→</span></a></div>
+        <div class="hero-image"><img src="https://images.unsplash.com/photo-1618220179428-22790b461013?auto=format&fit=crop&w=1400&q=85" alt="A warmly styled modern living space" /><p>01 — NEW SEASON</p></div>
+      </section>
+      <section class="value-strip"><div><b>01</b><span>Thoughtfully sourced</span></div><div><b>02</b><span>Made to last</span></div><div><b>03</b><span>Delivered with care</span></div></section>
+      <section class="category-section" id="collections"><div class="section-heading"><div><p class="eyebrow">Browse by mood</p><h2>For every corner<br />of your life.</h2></div><a href="#shop">View all collections <span>↗</span></a></div><div class="category-grid" id="categoryGrid"><div class="category-card wide"><img src="https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=1000&q=80" alt="Living room collection" /><span>Living</span></div><div class="category-card"><img src="https://images.unsplash.com/photo-1617103996702-96ff29b1c467?auto=format&fit=crop&w=800&q=80" alt="Homeware collection" /><span>Home</span></div><div class="category-card"><img src="https://images.unsplash.com/photo-1517705008128-361805f42e86?auto=format&fit=crop&w=800&q=80" alt="Personal care collection" /><span>Ritual</span></div></div></section>
+      <section class="products-section" id="shop"><div class="section-heading"><div><p class="eyebrow">Selected for you</p><h2>Current favorites.</h2></div><div class="product-controls"><button class="filter active" data-filter="all">All</button><button class="filter" data-filter="home">Home</button><button class="filter" data-filter="living">Living</button><button class="filter" data-filter="ritual">Ritual</button></div></div><div id="productGrid" class="product-grid" aria-live="polite"></div></section>
+      <section class="editorial" id="journal"><div class="editorial-image"><img src="https://images.unsplash.com/photo-1549490349-8643362247b5?auto=format&fit=crop&w=1200&q=85" alt="A sculptural lamp in a quiet interior" /></div><div class="editorial-copy"><p class="eyebrow">In the journal</p><h2>The art of<br />staying in.</h2><p>Small rituals, good light, and the lasting pleasure of a home that feels entirely yours.</p><a href="#journal" class="arrow-link">Read the story <span>→</span></a></div></section>
+      <section class="newsletter"><p class="eyebrow">A note from Arden</p><h2>Good things,<br />occasionally.</h2><form id="newsletterForm"><label class="sr-only" for="email">Email address</label><input id="email" type="email" placeholder="Your email address" required /><button aria-label="Subscribe" type="submit">→</button></form><p class="form-message" id="formMessage"></p></section>
+    </main>
+    <footer><a class="brand" href="#home">ARDEN<span>®</span></a><p>Objects for a well-lived life.</p><div><a href="#shop">Shop</a><a href="#journal">Instagram</a><a href="#home">Contact</a></div><small>© 2026 Arden Studio</small></footer>
+    <aside class="cart-drawer" id="cartDrawer" aria-label="Shopping bag" aria-hidden="true"><div class="drawer-head"><h2>Your bag <span id="drawerCount">(0)</span></h2><button id="closeCart" aria-label="Close bag">×</button></div><div id="cartItems" class="cart-items"><p class="empty-bag">Your bag is waiting for something good.</p></div><div class="drawer-foot"><div><span>Subtotal</span><strong id="cartTotal">$0.00</strong></div><button class="button button-dark checkout">Checkout</button></div></aside><div class="overlay" id="overlay"></div>
+    <script src="/app.js"></script>
+  </body>
+</html>

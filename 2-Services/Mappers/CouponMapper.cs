@@ -6,7 +6,7 @@ public class CouponMapper
     {
         Id = c.Id,
         Code = c.Code,
-        DiscountType = c.DiscountType,
+        DiscountType = (DiscountType) c.DiscountType,
         DiscountValue = c.DiscountValue,
         StartDate = c.StartDate,
         EndDate = c.EndDate,

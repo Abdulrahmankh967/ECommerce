@@ -215,6 +215,11 @@ builder.Services.AddScoped<ITokenService, TokenService>();
 
 builder.Services.AddSingleton<IAuthorizationHandler, CustomerOwnerOrAdminHandler>();
 
+
+builder.Services.AddSingleton<IOrderEmailQueue, OrderEmailQueue>();
+builder.Services.AddHostedService<OrderEmailBackgroundService>();
+
+
 // Repository
 builder.Services.Scan(scan => scan
     .FromAssemblyOf<CustomerRepository>()
@@ -316,6 +321,9 @@ app.UseExceptionHandler(errorApp =>
 
 
 app.UseHttpsRedirection();
+
+app.UseDefaultFiles();
+app.UseStaticFiles();
 
 app.UseSerilogRequestLogging();
 

@@ -1,4 +1,6 @@
-﻿public enum UserRole
+﻿
+
+public enum UserRole
 {
     customer,
     admin

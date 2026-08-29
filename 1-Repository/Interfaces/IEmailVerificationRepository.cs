@@ -4,4 +4,6 @@ public interface IEmailVerificationRepository : IGenericRepository<EmailVerifica
 {
     Task<EmailVerification?> GetVerificationByIdAsync(string id);
 
+    Task<List<EmailVerification>> GetPendingVerificationsByCustomerIdAsync(int customerId);
+
 }

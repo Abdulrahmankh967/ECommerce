@@ -13,4 +13,5 @@ public class ProductMapper
         CategoryId = p.CategoryId,
         CategoryName = p.Category?.Name ?? categoryName
     };
+
 }

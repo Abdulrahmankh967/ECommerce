@@ -121,7 +121,7 @@ namespace _2_Services.Services
             return true;
         }
 
-        public async Task<Coupon> ValidateAndGetCouponAsync(int customerId, string code)
+        public async Task<CouponDto> ValidateAndGetCouponAsync(int customerId, string code)
         {
             if (string.IsNullOrWhiteSpace(code))
                 throw new BadRequestException("Coupon code is required.");
@@ -141,7 +141,17 @@ namespace _2_Services.Services
             if (hasUsed)
                 throw new BadRequestException("You have already used this coupon.");
 
-            return coupon;
+            return new CouponDto
+            {
+                Code = coupon.Code,
+                DiscountType = (DiscountType) coupon.DiscountType,
+                DiscountValue = coupon.DiscountValue,
+                StartDate = coupon.StartDate,
+                EndDate = coupon.EndDate,
+                UsageLimit = coupon.UsageLimit,
+                TimesUsed = coupon.TimesUsed,
+                IsActive = coupon.IsActive
+            };
         }
     }
 }

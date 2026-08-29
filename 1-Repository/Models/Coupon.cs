@@ -6,7 +6,7 @@ namespace _1_Repository.Data
 
         public string Code { get; set; } = string.Empty;
 
-        public int DiscountType { get; set; } 
+        public int DiscountType { get; set; } // 1 = Percentage, 2 = FixedAmount
 
         public decimal DiscountValue { get; set; }
 

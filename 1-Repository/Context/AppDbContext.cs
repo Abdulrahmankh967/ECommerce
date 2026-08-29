@@ -24,14 +24,14 @@ namespace _1_Repository.Context
 
         public DbSet<AuditLog> AuditLogs { get; set; }
 
-        // Existing missing entities
         public DbSet<Cart> Carts { get; set; }
         public DbSet<CartItem> CartItems { get; set; }
         public DbSet<CustomerAddress> CustomerAddresses { get; set; }
         public DbSet<Supplier> Suppliers { get; set; }
         public DbSet<ProductSupplier> ProductSuppliers { get; set; }
 
-        // New entities
+        public DbSet<OutboxMessage> OutboxMessage { get; set; }
+
         public DbSet<Review> Reviews { get; set; }
         public DbSet<Wishlist> Wishlists { get; set; }
         public DbSet<WishlistItem> WishlistItems { get; set; }
@@ -47,8 +47,9 @@ namespace _1_Repository.Context
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
-                
-            // modelBuilder.ApplyConfiguration(new CourseConfiguration()); // not best practice
+
+            // modelBuilder.ApplyConfiguration(new CustomerConfiguration()); // not best practice
+            // modelBuilder.ApplyConfiguration(new OrderConfiguration()); // not best practice
 
             modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
         }

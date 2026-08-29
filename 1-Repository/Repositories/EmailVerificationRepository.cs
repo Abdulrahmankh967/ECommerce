@@ -52,4 +52,13 @@ public class EmailVerificationRepository : IEmailVerificationRepository
     {
         _context.Update(entity);
     }
+
+    public async Task<List<EmailVerification>> GetPendingVerificationsByCustomerIdAsync(int customerId)
+    {
+        return await _context.EmailVerification
+            .Where(ev => ev.CustomerId == customerId &&
+                         ev.UsedAt == null &&
+                         ev.ExpiresAt > DateTime.UtcNow)
+            .ToListAsync();
+    }
 }

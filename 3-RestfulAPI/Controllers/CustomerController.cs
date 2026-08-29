@@ -17,38 +17,25 @@ namespace _3_RestfulAPI.Controllers
             _customerService = customerService;
         }
 
-
-        //[HttpGet("GetCurrent")]
-        //[EnableRateLimiting("LowCostLimiter")]
-        //[ProducesResponseType(typeof(CustomerDto), StatusCodes.Status200OK)]
-        //[ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        //[ProducesResponseType(StatusCodes.Status404NotFound)]
-        //public async Task<IActionResult> GetCurrentCustomer()
-        //{
-        //    var customer = await _customerService.GetCustomerByIdAsync(User.GetUserId());
-        //    return Ok(customer);
-        //}
-
-        [HttpGet("GetById/{id:int}")]
+        [HttpGet("{id:int}")]
         [EnableRateLimiting("LowCostLimiter")]
         [ProducesResponseType(typeof(CustomerDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> GetCustomerById(
-            int id,
-            [FromServices] IAuthorizationService authorizationHandler)
+        public async Task<IActionResult> GetCustomerById(int id,[FromServices] IAuthorizationService authorizationHandler)
         {
             var authResult = await authorizationHandler.AuthorizeAsync(User, id, "CustomerOwnerOrAdmin");
             if (!authResult.Succeeded)
                 return Forbid();
 
             var customer = await _customerService.GetCustomerByIdAsync(id);
-            return Ok(customer);
+            return Ok(customer);    
+
         }
 
-        [HttpGet("GetAll")]
+        [HttpGet]
         [Authorize(Roles = "admin")]
         [EnableRateLimiting("HighCostLimiter")]
         [ProducesResponseType(typeof(List<CustomerDto>), StatusCodes.Status200OK)]
@@ -60,16 +47,14 @@ namespace _3_RestfulAPI.Controllers
             return Ok(customers);
         }
 
-        [HttpGet("GetCustomerWithOrders/{customerId:int}")]
+        [HttpGet("{customerId:int}/orders")]
         [EnableRateLimiting("LowCostLimiter")]
         [ProducesResponseType(typeof(CustomerDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> GetCustomerWithOrders(
-            int customerId,
-            [FromServices] IAuthorizationService authorizationHandler)
+        public async Task<IActionResult> GetCustomerWithOrders(int customerId,[FromServices] IAuthorizationService authorizationHandler)
         {
             var authResult = await authorizationHandler.AuthorizeAsync(User, customerId, "CustomerOwnerOrAdmin");
             if (!authResult.Succeeded)
@@ -79,7 +64,7 @@ namespace _3_RestfulAPI.Controllers
             return Ok(customer);
         }
 
-        [HttpGet("GetCustomersByPage")]
+        [HttpGet("paged")]
         [Authorize(Roles = "admin")]
         [EnableRateLimiting("HighCostLimiter")]
         [ProducesResponseType(typeof(PagedResult<CustomerDto>), StatusCodes.Status200OK)]
@@ -92,7 +77,7 @@ namespace _3_RestfulAPI.Controllers
             return Ok(customers);
         }
 
-        [HttpPost("AddCustomer")]
+        [HttpPost]
         [Authorize(Roles = "admin")]
         [EnableRateLimiting("LowCostLimiter")]
         [ProducesResponseType(typeof(CreateCustomerResponseDto), StatusCodes.Status201Created)]
@@ -110,7 +95,7 @@ namespace _3_RestfulAPI.Controllers
                 createdCustomer);
         }
 
-        [HttpPut]
+        [HttpPut("me")]
         [EnableRateLimiting("LowCostLimiter")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -129,12 +114,10 @@ namespace _3_RestfulAPI.Controllers
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> UpdateCustomer(
-            int id,
-            UpdateCustomerDto dto,
-            [FromServices] IAuthorizationService authorizationHandler)
+        public async Task<IActionResult> UpdateCustomer(int id,UpdateCustomerDto dto,[FromServices] IAuthorizationService authorizationHandler)
         {
             var authResult = await authorizationHandler.AuthorizeAsync(User, id, "CustomerOwnerOrAdmin");
+
             if (!authResult.Succeeded)
                 return Forbid();
 

@@ -1,153 +1,177 @@
-﻿using _2_Services.Services;
-using System.Security.Cryptography;
-using System.Text;
+﻿using System.Security.Cryptography;
+using Microsoft.Extensions.Logging;
 
-public class EmailVerificationService : EmailVerificationHelper
+namespace _2_Services.Services
 {
-    private readonly IEmailVerificationRepository _emailVerificationRepository;
-
-    private readonly EmailService _emailService;
-
-    private readonly CustomerService _customerService;
-
-    private readonly IUnitOfWork _unitOfWork;
-
-    public EmailVerificationService(IEmailVerificationRepository emailVerificationRepository,IUnitOfWork unitOfWork, EmailService emailService,CustomerService customerService)
+    public class EmailVerificationService
     {
-        _emailVerificationRepository = emailVerificationRepository;
+        private readonly IEmailVerificationRepository _emailVerificationRepository;
+        private readonly EmailService _emailService;
+        private readonly CustomerService _customerService;
+        private readonly IUnitOfWork _unitOfWork;
+        private readonly ILogger<EmailVerificationService> _logger;
 
-        _emailService = emailService;
+        private const int MaxAttempts = 5;
+        private const int ExpirationMinutes = 5;
 
-        _customerService = customerService;
-
-        _unitOfWork = unitOfWork;
-    }
-
-
-    public void ValidateEntity(EmailVerification entity)
-    {
-        if (entity == null)
-            throw new InvalidOperationException("EmailVerification entity cannot be null.");
-
-        if (string.IsNullOrWhiteSpace(entity.VerificationId))
-            throw new InvalidOperationException("EmailVerification has an invalid VerificationId.");
-
-        if (string.IsNullOrWhiteSpace(entity.CodeHash))
-            throw new InvalidOperationException("EmailVerification has an invalid CodeHash.");
-
-        if (entity.ExpiresAt <= DateTime.UtcNow)
-            throw new InvalidOperationException("EmailVerification has an invalid expiration date.");
-
-        if (entity.Attempts < 0)
-            throw new InvalidOperationException("EmailVerification has an invalid Attempts value.");
-    }
-
-    public async Task<EmailVerification?> GetEmailVerificationByIdAsync(string verificationId)
-    {
-        return await _emailVerificationRepository.GetVerificationByIdAsync(verificationId);
-    }
-
-    public async Task<EmailVerification> CreateEmailVerificationAsync(int customerId)
-    {
-        var customer = await _customerService.GetCustomerByIdAsync(customerId);
-
-        var verificationId =EmailVerificationHelper.GenerateVerificationId();
-
-        var code =EmailVerificationHelper.GenerateVerificationCode();
-
-        var codeHash = Convert.ToBase64String(EmailVerificationHelper.Hash(code));
-
-        var emailVerification = new EmailVerification
+        public EmailVerificationService(
+            IEmailVerificationRepository emailVerificationRepository,
+            IUnitOfWork unitOfWork,
+            EmailService emailService,
+            CustomerService customerService,
+            ILogger<EmailVerificationService> logger)
         {
-            CustomerId = customerId,
-            VerificationId = verificationId,
-            CodeHash = codeHash,
-            ExpiresAt = DateTime.UtcNow.AddMinutes(5),
-            Attempts = 0,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        ValidateEntity(emailVerification);
-
-        await _emailVerificationRepository.AddAsync(emailVerification);
-
-        await _unitOfWork.SaveChangesAsync();
-
-
-        await _emailService.SendVerificationCodeAsync(customer.Email, code);
-
-        return emailVerification;
-        
-    }
-
-    public async Task<bool> VerifyCodeAsync(string verificationId, string code)
-    {
-        ValidateVerificationIdAndCode(verificationId, code);
-
-        var emailVerification = await _emailVerificationRepository.GetVerificationByIdAsync(verificationId);
-
-        if (emailVerification == null)
-        {
-            throw new BadRequestException("Invalid verification ID.");
+            _emailVerificationRepository = emailVerificationRepository;
+            _unitOfWork = unitOfWork;
+            _emailService = emailService;
+            _customerService = customerService;
+            _logger = logger;
         }
 
         
-        if (!ValidateOTP(emailVerification))
+
+        public async Task<EmailVerification?> GetEmailVerificationByIdAsync(string verificationId)
         {
-            return false;
+            if (string.IsNullOrWhiteSpace(verificationId))
+            {
+                throw new BadRequestException("Verification ID cannot be empty.");
+            }
+
+            return await _emailVerificationRepository.GetVerificationByIdAsync(verificationId);
         }
 
-        var inputHash = EmailVerificationHelper.Hash(code);
-
-
-        var storedHash = Convert.FromBase64String(emailVerification.CodeHash);
-
-        if (CryptographicOperations.FixedTimeEquals(inputHash, storedHash))
+        public async Task<EmailVerification> CreateEmailVerificationAsync(int customerId)
         {
-            emailVerification.UsedAt = DateTime.UtcNow;
+            if (customerId <= 0)
+            {
+                throw new BadRequestException("Invalid customer ID.");
+            }
+
+            var customer = await _customerService.GetCustomerByIdAsync(customerId);
+            if (customer is null)
+            {
+                throw new NotFoundException($"Customer with ID {customerId} not found.");
+            }
+
+            await InvalidatePreviousVerificationsAsync(customerId);
+
+            var verificationId = EmailVerificationHelper.GenerateVerificationId();
+            var code = EmailVerificationHelper.GenerateVerificationCode();
+            var codeHash = Convert.ToBase64String(EmailVerificationHelper.Hash(code));
+
+            var emailVerification = new EmailVerification
+            {
+                CustomerId = customerId,
+                VerificationId = verificationId,
+                CodeHash = codeHash,
+                ExpiresAt = DateTime.UtcNow.AddMinutes(ExpirationMinutes),
+                Attempts = 0,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            await _emailVerificationRepository.AddAsync(emailVerification);
+            await _unitOfWork.SaveChangesAsync();
+
+            _logger.LogInformation("Email verification created for Customer ID {CustomerId}", customerId);
+
+            try
+            {
+                await _emailService.SendVerificationCodeAsync(customer.Email, code);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send verification email to Customer ID {CustomerId}", customerId);
+                throw new InternalServerErrorException("Failed to send verification email. Please try again later.");
+            }
+
+            return emailVerification;
+        }
+
+        public async Task<bool> VerifyCodeAsync(string verificationId, string code)
+        {
+            ValidateVerificationInput(verificationId, code);
+
+            var emailVerification = await _emailVerificationRepository.GetVerificationByIdAsync(verificationId);
+            if (emailVerification is null)
+            {
+                throw new BadRequestException("Invalid verification ID.");
+            }
+
+            if (!IsVerificationValid(emailVerification))
+            {
+                _logger.LogWarning("Verification code validation failed for ID {VerificationId} (Expired, Used, or Max Attempts)", verificationId);
+                return false;
+            }
+
+            var inputHash = EmailVerificationHelper.Hash(code);
+            var storedHash = Convert.FromBase64String(emailVerification.CodeHash);
+
+            bool isMatched = CryptographicOperations.FixedTimeEquals(inputHash, storedHash);
+
+            if (isMatched)
+            {
+                emailVerification.UsedAt = DateTime.UtcNow;
+                _logger.LogInformation("Verification successful for VerificationId {VerificationId}", verificationId);
+            }
+            else
+            {
+                emailVerification.Attempts++;
+                _logger.LogWarning("Failed OTP attempt {Attempts}/{MaxAttempts} for VerificationId {VerificationId}",
+                    emailVerification.Attempts, MaxAttempts, verificationId);
+            }
+
             _emailVerificationRepository.Update(emailVerification);
             await _unitOfWork.SaveChangesAsync();
+
+            return isMatched;
+        }
+
+
+        private async Task InvalidatePreviousVerificationsAsync(int customerId)
+        {
+
+            var pendingVerifications = await _emailVerificationRepository.GetPendingVerificationsByCustomerIdAsync(customerId);
+
+            if (pendingVerifications != null && pendingVerifications.Any())
+            {
+                foreach (var verification in pendingVerifications)
+                {
+                    verification.ExpiresAt = DateTime.UtcNow;
+                    _emailVerificationRepository.Update(verification);
+                }
+            }
+        }
+
+        private static void ValidateVerificationInput(string verificationId, string code)
+        {
+            if (string.IsNullOrWhiteSpace(verificationId))
+            {
+                throw new BadRequestException("Verification ID is required.");
+            }
+
+            if (string.IsNullOrWhiteSpace(code))
+            {
+                throw new BadRequestException("Verification code is required.");
+            }
+
+            if (code.Length != 6 || !code.All(char.IsDigit))
+            {
+                throw new BadRequestException("Verification code must be a 6-digit number.");
+            }
+        }
+
+        private static bool IsVerificationValid(EmailVerification emailVerification)
+        {
+            if (emailVerification.UsedAt != null) 
+                return false;
+
+            if (emailVerification.ExpiresAt <= DateTime.UtcNow) 
+                return false;
+
+            if (emailVerification.Attempts >= MaxAttempts) 
+                return false;
+
             return true;
         }
-
-        else
-        {
-            emailVerification.Attempts++;
-            _emailVerificationRepository.Update(emailVerification);
-            await _unitOfWork.SaveChangesAsync();
-            return false;
-        }
-    }
-
-    private static void ValidateVerificationIdAndCode(string verificationId, string code)
-    {
-        if (string.IsNullOrWhiteSpace(verificationId))
-        {
-            throw new BadRequestException("Verification ID is required.");
-        }
-
-        if (string.IsNullOrWhiteSpace(code))
-        {
-            throw new BadRequestException("Verification code is required.");
-        }
-
-        if (code.Length != 6 || !code.All(char.IsDigit))
-        {
-            throw new BadRequestException("Verification code must be a 6-digit number.");
-        }
-    }
-
-    private bool ValidateOTP(EmailVerification emailVerification)
-    {
-        if (emailVerification.UsedAt != null)
-            return false;
-
-        if (emailVerification.ExpiresAt <= DateTime.UtcNow)
-            return false;
-
-        if (emailVerification.Attempts >= 5)
-            return false;
-
-        return true;
     }
 }

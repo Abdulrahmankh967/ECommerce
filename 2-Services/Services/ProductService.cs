@@ -1,8 +1,7 @@
 using _1_Repository.Data;
 using _1_Repository.Interfaces;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using _2_Services.DTOs;
+using Microsoft.Extensions.Logging;
 
 namespace _2_Services.Services
 {
@@ -11,12 +10,18 @@ namespace _2_Services.Services
         private readonly IProductRepository _productRepository;
         private readonly ICategoryRepository _categoryRepository;
         private readonly IUnitOfWork _unitOfWork;
+        private readonly ILogger<ProductService> _logger;
 
-        public ProductService(IProductRepository productRepository,ICategoryRepository categoryRepository,IUnitOfWork unitOfWork)
+        public ProductService(
+            IProductRepository productRepository,
+            ICategoryRepository categoryRepository,
+            IUnitOfWork unitOfWork,
+            ILogger<ProductService> logger)
         {
             _productRepository = productRepository;
             _categoryRepository = categoryRepository;
             _unitOfWork = unitOfWork;
+            _logger = logger;
         }
 
         public async Task<List<ProductDTO>> GetAllProductsAsync()
@@ -42,7 +47,7 @@ namespace _2_Services.Services
             if (categoryId <= 0)
                 throw new BadRequestException("Category ID must be greater than zero.");
 
-            var products = await _productRepository.GetProductsByCategory(categoryId);
+            var products = await _productRepository.GetProductsByCategoryAsync(categoryId);
             return products.Select(p => ProductMapper.MapToDto(p)).ToList();
         }
 
@@ -68,10 +73,12 @@ namespace _2_Services.Services
             await _productRepository.AddAsync(product);
             await _unitOfWork.SaveChangesAsync();
 
+            _logger.LogInformation("Product created with ID {ProductId}", product.Id);
+
             return ProductMapper.MapToDto(product, category.Name);
         }
 
-        public async Task<ProductDTO?> UpdateProductAsync(int id, CreateProductDto dto)
+        public async Task<ProductDTO?> UpdateProductAsync(int id, UpdateProductDto dto)
         {
             if (id <= 0)
                 throw new BadRequestException("Product ID must be greater than zero.");
@@ -97,6 +104,8 @@ namespace _2_Services.Services
             _productRepository.Update(product);
             await _unitOfWork.SaveChangesAsync();
 
+            _logger.LogInformation("Product {ProductId} updated", id);
+
             return ProductMapper.MapToDto(product, category.Name);
         }
 
@@ -111,8 +120,9 @@ namespace _2_Services.Services
 
             _productRepository.Delete(product);
             await _unitOfWork.SaveChangesAsync();
+
+            _logger.LogInformation("Product {ProductId} deleted", id);
             return true;
         }
-
     }
 }
