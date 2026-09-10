@@ -21,6 +21,9 @@ namespace _1_Repository.Config
                 .HasColumnType("NVARCHAR")
                 .HasMaxLength(50);
 
+            builder.Property(p => p.Status)
+                .HasColumnType("INT");
+
             builder.HasOne(p => p.Order)
                .WithOne(o => o.Payment)
                .HasForeignKey<Payment>(p => p.OrderId);

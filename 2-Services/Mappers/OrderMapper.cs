@@ -1,4 +1,4 @@
-﻿using _1_Repository.Data;
+using _1_Repository.Data;
 
 public class OrderMapper
 {
@@ -7,48 +7,28 @@ public class OrderMapper
         Id = order.Id,
         OrderDate = order.OrderDate,
         TotalPrice = order.TotalPrice,
+        OrderStatus =(OrderStatus)order.OrderStatus,
         CustomerId = order.CustomerId,
         PaymentMethod = order.Payment?.Method,
         ShipmentStatus = order.Shipment?.Status,
-        CouponCode = order.CouponUsage?.Coupon?.Code ?? "None",
+        CouponCode = order.CouponUsage?.Coupon?.Code ?? string.Empty,
+        ShippingAddress = order.ShippingAddress is null ? null : new ShippingAddressDto
+        {
+            ShippingRecipientName = order.ShippingAddress.ShippingRecipientName,
+            ShippingPhone = order.ShippingAddress.ShippingPhone,
+            ShippingCity = order.ShippingAddress.ShippingCity,
+            ShippingStreet = order.ShippingAddress.ShippingStreet,
+            ShippingBuildingNumber = order.ShippingAddress.ShippingBuildingNumber,
+            ShippingPostalCode = order.ShippingAddress.ShippingPostalCode,
+        },
         Items = order.OrderItems.Select(oi => new OrderItemDetailDto
         {
             Id = oi.Id,
             ProductId = oi.ProductId,
-            ProductName = oi.Product?.Name ?? string.Empty,
+            ProductName = oi.Product?.Name ?? "None",
             Quantity = oi.Quantity,
             UnitPrice = oi.UnitPrice,
             Subtotal = oi.UnitPrice * oi.Quantity
         }).ToList()
-    };
-}
-public class CustomerMapper
-{
-    public static CustomerDto MapToCustomerDto(Customer customer) => new CustomerDto
-    {
-        Id = customer.Id,
-        FullName = customer.FullName,
-        Email = customer.Email,
-        Orders = customer.Orders.Select(o => new OrderDTO
-        {
-            Id = o.Id,
-            OrderDate = o.OrderDate,
-            TotalPrice = o.TotalPrice
-        }).ToList()
-    };
-    public static CustomerAuthDto MapToAuthDto(Customer customer) => new CustomerAuthDto
-    {
-        Id = customer.Id,
-        Email = customer.Email,
-        Role = customer.Role,
-        PasswordHash = customer.PasswordHash
-    };
-    public static CreateCustomerResponseDto MapToCreateCustomerDto(Customer newCustomer) => new CreateCustomerResponseDto
-    {
-        Id = newCustomer.Id,
-        FullName = newCustomer.FullName,
-        Email = newCustomer.Email,
-        Phone = newCustomer.Phone,
-        Role = newCustomer.Role
     };
 }

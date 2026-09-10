@@ -11,7 +11,7 @@ namespace _2_Services.Services
         private readonly IProductRepository _productRepository;
         private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<CartService> _logger;
-       
+
         public CartService(
             ICartRepository cartRepository,
             IProductRepository productRepository,
@@ -23,8 +23,6 @@ namespace _2_Services.Services
             _unitOfWork = unitOfWork;
             _logger = logger;
         }
-
-
 
         public async Task<CartDto> GetCartAsync(int customerId)
         {
@@ -45,7 +43,9 @@ namespace _2_Services.Services
 
             ValidateStock(product, dto.Quantity);
 
-            var cart = await _cartRepository.GetCartWithItemsAsync(customerId) ?? CreateNewCart(customerId);
+            
+            var cart = await _cartRepository.GetCartWithItemsAsync(customerId)
+                       ?? await CreateNewCartAsync(customerId);
 
             var item = cart.CartItems.FirstOrDefault(ci => ci.ProductId == dto.ProductId);
             if (item != null)
@@ -99,7 +99,6 @@ namespace _2_Services.Services
             await SaveAndMapAsync(cart);
         }
 
-
         private static void ValidateId(int id, string paramName)
         {
             if (id <= 0) throw new BadRequestException($"{paramName} must be greater than zero.");
@@ -107,31 +106,39 @@ namespace _2_Services.Services
 
         private static void ValidateStock(Product product, int quantity)
         {
-            if (!product.IsActive) 
+            if (!product.IsActive)
                 throw new BadRequestException($"Product '{product.Name}' is unavailable.");
 
-            if (product.Stock < quantity) 
+            if (product.Stock < quantity)
                 throw new BadRequestException($"Insufficient stock for '{product.Name}'.");
         }
 
         private async Task<(Cart Cart, CartItem Item)> GetCartAndItemAsync(int customerId, int cartItemId)
         {
             var cart = await _cartRepository.GetCartWithItemsAsync(customerId) ?? throw new NotFoundException("Cart not found.");
+
             var item = cart.CartItems.FirstOrDefault(ci => ci.Id == cartItemId) ?? throw new NotFoundException($"Item {cartItemId} not found.");
+
             return (cart, item);
         }
 
-        private Cart CreateNewCart(int customerId)
+        private async Task<Cart> CreateNewCartAsync(int customerId)
         {
             var cart = new Cart { CustomerId = customerId, CreatedAt = DateTime.UtcNow, CartItems = new List<CartItem>() };
-            _cartRepository.AddAsync(cart);
+            await _cartRepository.AddAsync(cart);
             return cart;
         }
 
         private async Task<CartDto> SaveAndMapAsync(Cart cart)
         {
             cart.UpdatedAt = DateTime.UtcNow;
-            _cartRepository.Update(cart);
+
+            if (cart.Id != 0)
+            {
+                _cartRepository.Update(cart);
+            }
+            
+
             await _unitOfWork.SaveChangesAsync();
             return CartMapper.MapToDto(cart);
         }
@@ -143,6 +150,5 @@ namespace _2_Services.Services
             TotalPrice = 0,
             TotalItems = 0
         };
-
     }
 }

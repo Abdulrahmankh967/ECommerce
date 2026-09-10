@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using System.Security.Claims;
 
 namespace _3_RestfulAPI.Controllers
 {
@@ -15,6 +16,31 @@ namespace _3_RestfulAPI.Controllers
         public CustomersController(CustomerService customerService)
         {
             _customerService = customerService;
+        }
+
+        [HttpGet("me")]
+        [EnableRateLimiting("LowCostLimiter")]
+        [ProducesResponseType(typeof(CustomerDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> GetCurrentCustomer()
+        {
+            
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (!int.TryParse(userIdClaim, out int customerId))
+            {
+                return Unauthorized();
+            }
+
+            var customer = await _customerService.GetCustomerByIdAsync(customerId);
+
+            if (customer is null)
+            {
+                return NotFound();
+            }
+
+            return Ok(customer);
         }
 
         [HttpGet("{id:int}")]
@@ -78,7 +104,7 @@ namespace _3_RestfulAPI.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "admin")]
+        [AllowAnonymous]
         [EnableRateLimiting("LowCostLimiter")]
         [ProducesResponseType(typeof(CreateCustomerResponseDto), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]

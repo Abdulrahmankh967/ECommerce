@@ -143,6 +143,7 @@ namespace _2_Services.Services
 
             return new CouponDto
             {
+                Id = coupon.Id,
                 Code = coupon.Code,
                 DiscountType = (DiscountType) coupon.DiscountType,
                 DiscountValue = coupon.DiscountValue,

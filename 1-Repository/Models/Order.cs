@@ -14,6 +14,12 @@ namespace _1_Repository.Data
 
         public Customer Customer { get; set; } = null!;
 
+        public int? ShippingAddressId { get; set; }
+
+        public ShippingAddress? ShippingAddress { get; set; }
+
+        public int OrderStatus { get; set; }
+
         public ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
 
         public Payment? Payment { get; set; }

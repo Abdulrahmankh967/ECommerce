@@ -1,4 +1,4 @@
-﻿using _1_Repository.Data;
+using _1_Repository.Data;
 using _1_Repository.Interfaces;
 
 namespace _2_Services.Services
@@ -11,8 +11,8 @@ namespace _2_Services.Services
         private readonly CouponService _couponService;
         private readonly CustomerService _customerService;
         private readonly IUnitOfWork _unitOfWork;
-        private readonly IOrderEmailQueue _orderEmailQueue;
         private readonly OutBoxMessageService _outBoxMessageService;
+        private readonly ICustomerAddressRepository _addressRepository;
 
         public OrderService(
             IOrderRepository orderRepository,
@@ -21,8 +21,8 @@ namespace _2_Services.Services
             CouponService couponService,
             CustomerService customerService,
             IUnitOfWork unitOfWork,
-            IOrderEmailQueue orderEmailQueue,
-            OutBoxMessageService outBoxMessageService)
+            OutBoxMessageService outBoxMessageService,
+            ICustomerAddressRepository addressRepository)
         {
             _orderRepository = orderRepository;
             _cartRepository = cartRepository;
@@ -30,20 +30,38 @@ namespace _2_Services.Services
             _couponService = couponService;
             _customerService = customerService;
             _unitOfWork = unitOfWork;
-            _orderEmailQueue = orderEmailQueue;
             _outBoxMessageService = outBoxMessageService;
+            _addressRepository = addressRepository;
         }
 
         public async Task<List<OrderDetailDto>> GetOrdersByCustomerAsync(int customerId)
         {
             ValidateId(customerId, "Customer ID");
             var orders = await _orderRepository.GetCustomerOrdersAsync(customerId);
+
             return orders.Select(OrderMapper.MapToDetailDto).ToList();
+        }
+        public async Task<List<OrderDetailDto>> GetAllOrdersAsync()
+        {
+            var orders = await _orderRepository.GetAllAsync();
+
+            return orders.Select(OrderMapper.MapToDetailDto).ToList();
+        }
+
+        public async Task<OrderDetailDto?> GetOrderByIdForAdminAsync(int orderId)
+        {
+            ValidateId(orderId, "Order ID");
+
+            var order = await _orderRepository.GetOrderWithItemsAsync(orderId)
+                ?? throw new NotFoundException($"Order {orderId} not found.");
+
+            return OrderMapper.MapToDetailDto(order);
         }
 
         public async Task<OrderDetailDto?> GetOrderByIdAsync(int orderId, int customerId, bool isAdmin)
         {
             ValidateId(orderId, "Order ID");
+
             var order = await _orderRepository.GetOrderWithItemsAsync(orderId)
                 ?? throw new NotFoundException($"Order {orderId} not found.");
 
@@ -71,21 +89,23 @@ namespace _2_Services.Services
                 var customer = await _customerService.GetCustomerByIdAsync(customerId)
                     ?? throw new NotFoundException($"Customer {customerId} not found.");
 
+                var shippingSnapshot = await BuildShippingSnapshotAsync(customerId, dto.CustomerAddressId);
+
                 var (subtotal, orderItems) = await BuildOrderWithItemsAsync(cart);
                 var (coupon, finalTotal) = await CalculateDiscountAsync(customerId, dto.CouponCode, subtotal);
 
-                var order = CreateOrderEntity(customerId, dto, orderItems, coupon, finalTotal);
+                var order = CreateOrderEntity(customerId, dto, orderItems, coupon, finalTotal, shippingSnapshot);
 
                 await _orderRepository.AddAsync(order);
                 cart.CartItems.Clear();
 
-                await _outBoxMessageService.CreateAndAddMessageAsync("OrderEmail", new { Email = customer.Email, OrderId = order.Id });
+                await _unitOfWork.SaveChangesAsync();
+
+                await _outBoxMessageService.CreateAndAddMessageAsync("OrderEmail", new { Email = customer.Email!, OrderId = order.Id });
 
                 await _unitOfWork.SaveChangesAsync();
                 await _unitOfWork.CommitTransactionAsync();
 
-
-                await _orderEmailQueue.EnqueueAsync(new OrderEmailMessage(order.Id, customer.Email));
 
                 return OrderMapper.MapToDetailDto(order);
             }
@@ -102,6 +122,32 @@ namespace _2_Services.Services
             if (id <= 0) throw new BadRequestException($"{paramName} must be greater than zero.");
         }
 
+        
+        //builds an immutable ShippingAddress snapshot.
+        private async Task<ShippingAddress> BuildShippingSnapshotAsync(int customerId, int customerAddressId)
+        {
+            var address = await _addressRepository.GetByIdAsync(customerAddressId)
+                ?? throw new NotFoundException($"Address {customerAddressId} not found.");
+
+            if (address.CustomerId != customerId)
+                throw new ForbiddenException("The specified address does not belong to this customer.");
+
+            return CreateShipping(address);
+        }
+
+        private static ShippingAddress CreateShipping(CustomerAddress address)
+        {
+            return new ShippingAddress
+            {
+                ShippingRecipientName = address.RecipientName,
+                ShippingPhone = address.Phone,
+                ShippingCity = address.City,
+                ShippingStreet = address.Street,
+                ShippingBuildingNumber = address.BuildingNumber,
+                ShippingPostalCode = address.PostalCode,
+            };
+        }
+
         private async Task<Cart> ValidateCartAsync(int customerId)
         {
             var cart = await _cartRepository.GetCartWithItemsAsync(customerId);
@@ -113,6 +159,7 @@ namespace _2_Services.Services
         private async Task<(decimal Subtotal, List<OrderItem> Items)> BuildOrderWithItemsAsync(Cart cart)
         {  
             var productIds = cart.CartItems.Select(ci => ci.ProductId).Distinct().ToList();
+
             var products = await _productRepository.GetProductsByIdsAsync(productIds);
 
             if (productIds.Count != products.Count)
@@ -172,7 +219,7 @@ namespace _2_Services.Services
             return (coupon, subtotal - discount);
         }
 
-        private static Order CreateOrderEntity(int customerId, PlaceOrderDto dto, List<OrderItem> items, CouponDto? coupon, decimal finalTotal)
+        private static Order CreateOrderEntity(int customerId, PlaceOrderDto dto, List<OrderItem> items, CouponDto? coupon, decimal finalTotal, ShippingAddress shippingSnapshot)
         {
             var order = new Order
             {
@@ -180,11 +227,13 @@ namespace _2_Services.Services
                 OrderDate = DateTime.UtcNow,
                 TotalPrice = finalTotal,
                 OrderItems = items,
+                ShippingAddress = shippingSnapshot,
                 Payment = new Payment
                 {
                     Amount = finalTotal,
                     PaymentDate = DateTime.UtcNow,
-                    Method = dto.PaymentMethod
+                    Method = dto.PaymentMethod,
+                    Status = (int)PaymentStatus.Pending
                 },
                 Shipment = new Shipment
                 {

@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using _1_Repository.Context;
 
@@ -11,9 +12,11 @@ using _1_Repository.Context;
 namespace _1_Repository.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260907052728_AddPaymentStatus")]
+    partial class AddPaymentStatus
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -501,22 +504,12 @@ namespace _1_Repository.Migrations
                     b.Property<DateTime>("OrderDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("OrderStatus")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("ShippingAddressId")
-                        .HasColumnType("int");
-
                     b.Property<decimal>("TotalPrice")
                         .HasColumnType("decimal(18,2)");
 
                     b.HasKey("Id");
 
                     b.HasIndex("CustomerId");
-
-                    b.HasIndex("ShippingAddressId")
-                        .IsUnique()
-                        .HasFilter("[ShippingAddressId] IS NOT NULL");
 
                     b.ToTable("Orders");
                 });
@@ -692,47 +685,6 @@ namespace _1_Repository.Migrations
                     b.ToTable("Shipments");
                 });
 
-            modelBuilder.Entity("_1_Repository.Data.ShippingAddress", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("ShippingBuildingNumber")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<string>("ShippingCity")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("ShippingPhone")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<string>("ShippingPostalCode")
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<string>("ShippingRecipientName")
-                        .IsRequired()
-                        .HasMaxLength(150)
-                        .HasColumnType("nvarchar(150)");
-
-                    b.Property<string>("ShippingStreet")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("ShippingAddresses");
-                });
-
             modelBuilder.Entity("_1_Repository.Data.Wishlist", b =>
                 {
                     b.Property<int>("Id")
@@ -894,14 +846,7 @@ namespace _1_Repository.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("_1_Repository.Data.ShippingAddress", "ShippingAddress")
-                        .WithOne("Order")
-                        .HasForeignKey("_1_Repository.Data.Order", "ShippingAddressId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.Navigation("Customer");
-
-                    b.Navigation("ShippingAddress");
                 });
 
             modelBuilder.Entity("_1_Repository.Data.OrderItem", b =>
@@ -1062,12 +1007,6 @@ namespace _1_Repository.Migrations
                     b.Navigation("Reviews");
 
                     b.Navigation("WishlistItems");
-                });
-
-            modelBuilder.Entity("_1_Repository.Data.ShippingAddress", b =>
-                {
-                    b.Navigation("Order")
-                        .IsRequired();
                 });
 
             modelBuilder.Entity("_1_Repository.Data.Wishlist", b =>

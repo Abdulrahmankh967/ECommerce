@@ -1,10 +1,13 @@
 public class OutBoxMessageService
 {
     private readonly IOutBoxMessageRepository _outBoxMessageRepository;
+    private readonly IUnitOfWork _unitOfWork;
 
-    public OutBoxMessageService(IOutBoxMessageRepository outBoxMessageRepository)
+
+    public OutBoxMessageService(IOutBoxMessageRepository outBoxMessageRepository,IUnitOfWork unitOfWork)
     {
         _outBoxMessageRepository = outBoxMessageRepository;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<List<OutboxMessage>> GetPendingMessagesAsync()
@@ -20,6 +23,7 @@ public class OutBoxMessageService
         }
 
         await _outBoxMessageRepository.AddAsync(message);
+        await _unitOfWork.SaveChangesAsync();
     }
 
     
@@ -34,6 +38,7 @@ public class OutBoxMessageService
         };
 
         await _outBoxMessageRepository.AddAsync(message);
+        await _unitOfWork.SaveChangesAsync();
     }
 
     
@@ -46,6 +51,7 @@ public class OutBoxMessageService
             message.ProcessedAt = DateTime.UtcNow;
             message.Error = null;
             _outBoxMessageRepository.Update(message);
+            await _unitOfWork.SaveChangesAsync();
         }
     }
 
@@ -57,6 +63,7 @@ public class OutBoxMessageService
         {
             message.Error = errorReason;
             _outBoxMessageRepository.Update(message);
+            await _unitOfWork.SaveChangesAsync();
         }
     }
 }

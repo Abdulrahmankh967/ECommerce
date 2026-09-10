@@ -13,6 +13,7 @@ public class OutBoxMessageRepository : IOutBoxMessageRepository
     public async Task<List<OutboxMessage>> GetPendingMessagesAsync()
     {
         return await _context.OutboxMessage
+            .AsNoTracking()
             .Where(m => !m.IsProcessed)
             .ToListAsync();
     }

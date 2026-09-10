@@ -2,6 +2,10 @@ using System.ComponentModel.DataAnnotations;
 
 public class PlaceOrderDto
 {
+    [Required(ErrorMessage = "Address ID is required.")]
+    [Range(1, int.MaxValue, ErrorMessage = "Address ID must be greater than zero.")]
+    public int CustomerAddressId { get; set; }
+
     [Required(ErrorMessage = "Payment method is required.")]
     [StringLength(50, ErrorMessage = "Payment method cannot exceed 50 characters.")]
     public string PaymentMethod { get; set; } = string.Empty;
@@ -9,3 +13,4 @@ public class PlaceOrderDto
     [StringLength(50, ErrorMessage = "Coupon code cannot exceed 50 characters.")]
     public string? CouponCode { get; set; }
 }
+

@@ -12,8 +12,12 @@ namespace _1_Repository.Data
 
         public string Method { get; set; } = string.Empty;
 
+        public int Status { get; set; }
+
         public int OrderId { get; set; }
 
         public Order Order { get; set; } = null!;
     }
+
+   
 }

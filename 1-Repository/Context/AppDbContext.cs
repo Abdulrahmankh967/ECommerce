@@ -39,6 +39,8 @@ namespace _1_Repository.Context
         public DbSet<Coupon> Coupons { get; set; }
         public DbSet<CouponUsage> CouponUsages { get; set; }
 
+        public DbSet<ShippingAddress> ShippingAddresses { get; set; }
+
         public AppDbContext(DbContextOptions<AppDbContext> options)
         : base(options)
         {

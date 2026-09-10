@@ -16,7 +16,7 @@ public class TokenService : ITokenService
 
     public string GenerateAccessToken(AccessTokenData data)
     {
-        var key = Encoding.UTF8.GetBytes(_jwtSettings.SecretKey);
+        byte[] key = Encoding.UTF8.GetBytes(_jwtSettings.SecretKey);
 
         var claims = new[]
         {
@@ -40,18 +40,18 @@ public class TokenService : ITokenService
             SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key),SecurityAlgorithms.HmacSha256)
         };
 
-        var handler = new JwtSecurityTokenHandler();
+        JwtSecurityTokenHandler handler = new JwtSecurityTokenHandler();
 
-        var token = handler.CreateToken(tokenDescriptor);
+        SecurityToken token = handler.CreateToken(tokenDescriptor);
 
         return handler.WriteToken(token);
     }
 
     public string GenerateRefreshToken()
     {
-        var selector = Convert.ToBase64String(RandomNumberGenerator.GetBytes(16));
+        string selector = Convert.ToBase64String(RandomNumberGenerator.GetBytes(16));
 
-        var secret = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+        string secret = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
 
         return $"{selector}.{secret}";
     }

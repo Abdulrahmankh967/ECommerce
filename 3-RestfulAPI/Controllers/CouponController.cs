@@ -17,6 +17,21 @@ namespace _3_RestfulAPI.Controllers
             _couponService = couponService;
         }
 
+        /// <summary>
+        /// Validates a coupon code for the authenticated customer without placing an order.
+        /// Returns the coupon details (discount type and value) so the client can show a live preview.
+        /// </summary>
+        [HttpPost("validate")]
+        [EnableRateLimiting("LowCostLimiter")]
+        [ProducesResponseType(typeof(CouponDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<IActionResult> ValidateCoupon([FromBody] ValidateCouponDto dto)
+        {
+            var coupon = await _couponService.ValidateAndGetCouponAsync(User.GetUserId(), dto.Code);
+            return Ok(coupon);
+        }
+
         [HttpGet]
         [Authorize(Roles = "admin")]
         [EnableRateLimiting("HighCostLimiter")]

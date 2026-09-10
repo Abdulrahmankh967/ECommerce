@@ -1,5 +1,4 @@
-﻿using _1_Repository.Data;
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
 
 namespace _3_RestfulAPI.Authorization

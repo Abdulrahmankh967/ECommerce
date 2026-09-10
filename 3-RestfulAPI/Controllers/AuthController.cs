@@ -1,4 +1,4 @@
-﻿using _2_Services.Services;
+using _2_Services.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -12,9 +12,7 @@ namespace _3_RestfulAPI.Controllers
         private readonly AuthenticationService _authenticationService;
         private readonly RefreshTokenService _refreshTokenService;
 
-        public AuthController(
-            AuthenticationService authenticationService,
-            RefreshTokenService refreshTokenService)
+        public AuthController(AuthenticationService authenticationService,RefreshTokenService refreshTokenService)
         {
             _authenticationService = authenticationService;
             _refreshTokenService = refreshTokenService;
@@ -68,6 +66,30 @@ namespace _3_RestfulAPI.Controllers
         {
             await _authenticationService.LogoutAsync(request.RefreshToken);
             return NoContent();
+        }
+
+        [HttpPost("forgot-password")]
+        [AllowAnonymous]
+        [EnableRateLimiting("AuthLimiter")]
+        [ProducesResponseType(typeof(ForgotPasswordResponse), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
+        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
+        {
+            var result = await _authenticationService.ForgotPasswordAsync(request);
+            return Ok(result);
+        }
+
+        [HttpPost("reset-password")]
+        [AllowAnonymous]
+        [EnableRateLimiting("AuthLimiter")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
+        {
+            await _authenticationService.ResetPasswordAsync(request);
+            return Ok(new { message = "Password reset successful. Please login with your new password." });
         }
     }
 }

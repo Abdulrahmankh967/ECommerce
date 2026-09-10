@@ -1,5 +1,3 @@
-using _1_Repository.Data;
-using _2_Services.Services;
 using Microsoft.Extensions.Logging;
 
 namespace _2_Services.Services
@@ -121,6 +119,48 @@ namespace _2_Services.Services
 
             await _refreshTokenService.RevokeRefreshTokenAsync(refreshToken);
             _logger.LogInformation("Refresh token revoked successfully during logout.");
+        }
+
+        public async Task<ForgotPasswordResponse> ForgotPasswordAsync(ForgotPasswordRequest request)
+        {
+            ValidateRequestNotNull(request, "Forgot password request cannot be null.");
+
+            _logger.LogInformation("Forgot password requested for email: {Email}", DataMasker.MaskEmail(request.Email));
+
+            var customer = await _customerService.GetCustomerByEmailAsync(request.Email);
+            if (customer == null)
+            {
+                return new ForgotPasswordResponse
+                {
+                    Message = "If an account with that email exists, password reset instructions have been sent."
+                };
+            }
+
+            var verification = await _emailVerificationService.CreateEmailVerificationAsync(customer.Id);
+
+            return new ForgotPasswordResponse
+            {
+                Message = "Password reset instructions have been sent to your email.",
+                VerificationId = verification.VerificationId
+            };
+        }
+
+        public async Task ResetPasswordAsync(ResetPasswordRequest request)
+        {
+            ValidateRequestNotNull(request, "Reset password request cannot be null.");
+
+            _logger.LogInformation("Resetting password for VerificationId: {VerificationId}", request.VerificationId);
+
+            await ValidateOtpCodeAsync(request.VerificationId, request.OTP);
+
+            var verification = await _emailVerificationService.GetEmailVerificationByIdAsync(request.VerificationId);
+            if (verification == null)
+            {
+                throw new BadRequestException("Invalid verification request.");
+            }
+
+            await _customerService.ChangePasswordAsync(verification.CustomerId, request.NewPassword);
+            _logger.LogInformation("Password reset successfully for Customer ID: {CustomerId}", verification.CustomerId);
         }
 
 

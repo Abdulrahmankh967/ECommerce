@@ -18,28 +18,28 @@ public class SupplierRepository : ISupplierRepository
             .ToListAsync();
     }
 
-    Task IGenericRepository<Supplier>.AddAsync(Supplier entity)
+    async Task IGenericRepository<Supplier>.AddAsync(Supplier entity)
     {
-        throw new NotImplementedException();
+        await _context.Suppliers.AddAsync(entity);
     }
 
     void IGenericRepository<Supplier>.Delete(Supplier entity)
     {
-        throw new NotImplementedException();
+        _context.Suppliers.Remove(entity);
     }
 
-    Task<List<Supplier>> IGenericRepository<Supplier>.GetAllAsync()
+    async Task<List<Supplier>> IGenericRepository<Supplier>.GetAllAsync()
     {
-        throw new NotImplementedException();
+        return await _context.Suppliers.ToListAsync();
     }
 
-    Task<Supplier?> IGenericRepository<Supplier>.GetByIdAsync(int id)
+    async Task<Supplier?> IGenericRepository<Supplier>.GetByIdAsync(int id)
     {
-        throw new NotImplementedException();
+        return await _context.Suppliers.FindAsync(id);
     }
 
     void IGenericRepository<Supplier>.Update(Supplier entity)
     {
-        throw new NotImplementedException();
+        _context.Suppliers.Update(entity);
     }
 }

@@ -1,4 +1,4 @@
-﻿
+
 using _1_Repository.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -20,7 +20,11 @@ namespace _1_Repository.Config
             builder.HasOne(c => c.Customer)
                 .WithMany(c => c.Orders)
                 .HasForeignKey(c => c.CustomerId);
-                
+
+            builder.HasOne(o => o.ShippingAddress)
+                .WithOne(sa => sa.Order)
+                .HasForeignKey<Order>(o => o.ShippingAddressId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }

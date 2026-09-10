@@ -1,57 +1,35 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using _2_Services.Services;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using System;
 using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
 
 public class OrderEmailBackgroundService : BackgroundService
 {
-    private readonly IOrderEmailQueue _queue;
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<OrderEmailBackgroundService> _logger;
-    private readonly OutBoxMessageService _outBoxMessageService;
+    
 
     public OrderEmailBackgroundService(
-        IOrderEmailQueue queue,
         IServiceProvider serviceProvider,
-        ILogger<OrderEmailBackgroundService> logger,
-        OutBoxMessageService outBoxMessageService)
+        ILogger<OrderEmailBackgroundService> logger)
     {
-        _queue = queue;
         _serviceProvider = serviceProvider;
         _logger = logger;
-        _outBoxMessageService = outBoxMessageService;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         
-        await ProcessPendingOutboxMessagesAsync(stoppingToken);
-
-        
         while (!stoppingToken.IsCancellationRequested)
         {
-            var message = await _queue.DequeueAsync(stoppingToken);
+            await ProcessPendingOutboxMessagesAsync(stoppingToken);
 
-            try
-            {
-                using var scope = _serviceProvider.CreateScope();
-                var emailService = scope.ServiceProvider.GetRequiredService<EmailService>();
-                var outboxService = scope.ServiceProvider.GetRequiredService<OutBoxMessageService>();
-
-                await emailService.SendPlaceOrderMessage(
-                    message.Email,
-                    $"Your order with ID {message.OrderId} has been placed successfully."
-                );
-
-                
-                await outboxService.MarkAsProcessedAsync(message.OrderId);
-
-                _logger.LogInformation("Order email sent to {Email} for Order #{OrderId}", message.Email, message.OrderId);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to send order email to {Email} for Order #{OrderId}", message.Email, message.OrderId);
-            }
+            
+            await Task.Delay(3000, stoppingToken);
         }
     }
 
@@ -63,6 +41,8 @@ public class OrderEmailBackgroundService : BackgroundService
 
             var outboxService = scope.ServiceProvider.GetRequiredService<OutBoxMessageService>();
             var emailService = scope.ServiceProvider.GetRequiredService<EmailService>();
+            var orderService = scope.ServiceProvider.GetRequiredService<OrderService>();
+
 
             var pendingMessages = await outboxService.GetPendingMessagesAsync();
 
@@ -70,23 +50,30 @@ public class OrderEmailBackgroundService : BackgroundService
             {
                 if (stoppingToken.IsCancellationRequested) break;
 
-                
                 var emailData = JsonSerializer.Deserialize<OrderEmailMessage>(message.Payload);
-
                 if (emailData is null) continue;
 
+                var order = await orderService.GetOrderByIdForAdminAsync(emailData.OrderId);
+            
                 try
                 {
-                    await emailService.SendPlaceOrderMessage(emailData.Email,$"Your order with ID {emailData.OrderId} has been placed successfully."
-                    );
+                    if (order != null && order.Items != null)
+                    {
+                        
+                        var itemNames = string.Join(", ", order.Items.Select(item => $"{item.ProductName} ({item.UnitPrice})"));
 
-                    await outboxService.MarkAsProcessedAsync(message.Id);
-                    _logger.LogInformation("[Recovery] Pending order email sent for Order #{OrderId}", emailData.OrderId);
+                        var messageBody = $"Your order #{order.Id} with items ({itemNames}) has been placed successfully.";
+
+                        await emailService.SendPlaceOrderMessage(emailData.Email, messageBody);
+
+                        await outboxService.MarkAsProcessedAsync(message.Id);
+                        _logger.LogInformation("Outbox order email sent for Order #{OrderId}", order.Id);
+                    }
                 }
                 catch (Exception ex)
                 {
                     await outboxService.MarkAsFailedAsync(message.Id, ex.Message);
-                    _logger.LogError(ex, "[Recovery] Failed to send pending email for Message {MessageId}", message.Id);
+                    _logger.LogError(ex, "Failed to send outbox email for Message {MessageId}", message.Id);
                 }
             }
         }

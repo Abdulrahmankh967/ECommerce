@@ -17,6 +17,20 @@ namespace _3_RestfulAPI.Controllers
             _orderService = orderService;
         }
 
+
+
+        [HttpGet("All")]
+        [Authorize(Roles = "admin")]
+        [EnableRateLimiting("LowCostLimiter")]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        public async Task<IActionResult> GetAllOrders()
+        {
+            var orders = await _orderService.GetAllOrdersAsync();
+            return Ok(orders);
+        }
+
         [HttpGet]
         [EnableRateLimiting("HighCostLimiter")]
         [ProducesResponseType(typeof(List<OrderDetailDto>), StatusCodes.Status200OK)]
@@ -44,7 +58,7 @@ namespace _3_RestfulAPI.Controllers
         [HttpPost]
         [EnableRateLimiting("HighCostLimiter")]
         [ProducesResponseType(typeof(OrderDetailDto), StatusCodes.Status201Created)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+            [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> PlaceOrder([FromBody] PlaceOrderDto dto)

@@ -18,7 +18,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Debug()
-    .WriteTo.Seq(builder.Configuration["Seq:Url"])
+    .WriteTo.Seq(builder.Configuration["Seq:Url"]!)
     .CreateLogger();
 
 
@@ -41,7 +41,10 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidIssuer = jwtSettings.Issuer,
             ValidAudience = jwtSettings.Audience,
 
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.SecretKey))
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.SecretKey)),
+
+            ClockSkew = TimeSpan.Zero // Optional: Set clock skew to zero for immediate expiration
+
         };
     });
 
@@ -134,7 +137,7 @@ builder.Services.AddRateLimiter(options =>
             partitionKey: "Global",
             factory: _ => new FixedWindowRateLimiterOptions
             {
-                PermitLimit = 100,
+                PermitLimit = 1000,
                 Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0
             });
@@ -148,7 +151,7 @@ builder.Services.AddRateLimiter(options =>
             partitionKey: ip,
             factory: _ => new FixedWindowRateLimiterOptions
             {
-                PermitLimit = 5,
+                PermitLimit = 15,
                 Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0
             });
@@ -162,7 +165,7 @@ builder.Services.AddRateLimiter(options =>
             partitionKey: partitionKey,
             factory: _ => new FixedWindowRateLimiterOptions
             {
-                PermitLimit = 3,
+                PermitLimit = 10,
                 Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0
             });
@@ -245,18 +248,34 @@ builder.Services.AddAuthorization(options =>
         policy.Requirements.Add(new CustomerOwnerOrAdminRequirement()));
 });
 //test
+//builder.Services.AddCors(options =>
+//{
+//    options.AddPolicy("CustomerApiPolicy", policy =>
+//    {
+//        policy
+//            .SetIsOriginAllowed(origin =>
+//            {
+//                if (string.IsNullOrWhiteSpace(origin)) 
+//                    return false;
+
+//                if (!Uri.TryCreate(origin, UriKind.Absolute, out var uri)) 
+//                    return false;
+
+//                return uri.Host is "localhost" or "127.0.0.1";
+//            })
+//            .AllowAnyHeader()
+//            .AllowAnyMethod()
+//            .AllowCredentials();
+//    });
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("CustomerApiPolicy", policy =>
+    options.AddPolicy("AllowReactApp", policy =>
     {
         policy
             .SetIsOriginAllowed(origin =>
             {
-                if (string.IsNullOrWhiteSpace(origin)) 
-                    return false;
-
-                if (!Uri.TryCreate(origin, UriKind.Absolute, out var uri)) 
-                    return false;
+                if (string.IsNullOrWhiteSpace(origin)) return false;
+                if (!Uri.TryCreate(origin, UriKind.Absolute, out var uri)) return false;
 
                 return uri.Host is "localhost" or "127.0.0.1";
             })
@@ -327,7 +346,7 @@ app.UseStaticFiles();
 
 app.UseSerilogRequestLogging();
 
-app.UseCors("CustomerApiPolicy");
+app.UseCors("AllowReactApp");
 
 app.UseRateLimiter();
 

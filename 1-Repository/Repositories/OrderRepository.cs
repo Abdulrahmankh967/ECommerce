@@ -1,4 +1,4 @@
-﻿using _1_Repository.Data;
+using _1_Repository.Data;
 using _1_Repository.Interfaces;
 using _1_Repository.Context;
 using Microsoft.EntityFrameworkCore;
@@ -15,6 +15,7 @@ public class OrderRepository : IOrderRepository
     public async Task<List<Order>> GetAllAsync()
     {
         return await _context.Orders
+            .Include(o=>o.OrderItems)
             .AsNoTracking()
             .ToListAsync();
     }
@@ -38,6 +39,9 @@ public class OrderRepository : IOrderRepository
     public async Task<List<Order>> GetCustomerOrdersAsync(int customerId)
     {
         return await _context.Orders
+            .Include(o => o.OrderItems)
+            .ThenInclude(oi => oi.Product)
+            .Include(o => o.ShippingAddress)
             .Where(o => o.CustomerId == customerId)
             .ToListAsync();
     }
@@ -46,6 +50,8 @@ public class OrderRepository : IOrderRepository
     {
         return await _context.Orders
             .Include(o => o.OrderItems)
+            .ThenInclude(oi => oi.Product)
+            .Include(o => o.ShippingAddress)
             .FirstOrDefaultAsync(o => o.Id == orderId);
     }
 
