@@ -1,10 +1,13 @@
+using _1_Repository.Data;
+using _1_Repository.Interfaces;
 using Microsoft.Extensions.Logging;
 
 namespace _2_Services.Services
 {
     public class AuthenticationService
     {
-        private readonly CustomerService _customerService;
+        private readonly IUserRepository _userRepository;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly EmailVerificationService _emailVerificationService;
         private readonly RefreshTokenService _refreshTokenService;
         private readonly IPasswordHasher _passwordHasher;
@@ -12,14 +15,16 @@ namespace _2_Services.Services
         private readonly ILogger<AuthenticationService> _logger;
 
         public AuthenticationService(
-            CustomerService customerService,
+            IUserRepository userRepository,
+            IUnitOfWork unitOfWork,
             EmailVerificationService emailVerificationService,
             RefreshTokenService refreshTokenService,
             IPasswordHasher passwordHasher,
             ITokenService tokenService,
             ILogger<AuthenticationService> logger)
         {
-            _customerService = customerService;
+            _userRepository = userRepository;
+            _unitOfWork = unitOfWork;
             _emailVerificationService = emailVerificationService;
             _refreshTokenService = refreshTokenService;
             _passwordHasher = passwordHasher;
@@ -27,25 +32,23 @@ namespace _2_Services.Services
             _logger = logger;
         }
 
-
         public async Task<LoginResponse> LoginAsync(LoginRequest request)
         {
             ValidateRequestNotNull(request, "Login request cannot be null.");
 
             _logger.LogInformation("Login attempt for email: {Email}", DataMasker.MaskEmail(request.Email));
 
-            var customer = await _customerService.GetCustomerByEmailAsync(request.Email);
+            var user = await _userRepository.GetUserByEmailAsync(request.Email);
 
-            
-            if (customer is null || !_passwordHasher.Verify(request.Password, customer.PasswordHash))
+            if (user is null || !_passwordHasher.Verify(request.Password, user.PasswordHash))
             {
                 _logger.LogWarning("Login failed for email: {Email}", DataMasker.MaskEmail(request.Email));
                 throw new UnauthorizedException("Invalid credentials.");
             }
 
-            var verification = await _emailVerificationService.CreateEmailVerificationAsync(customer.Id);
+            var verification = await _emailVerificationService.CreateEmailVerificationAsync(user.Id);
 
-            _logger.LogInformation("Login successful for Customer ID {CustomerId}. Verification OTP sent.", customer.Id);
+            _logger.LogInformation("Login successful for User ID {UserId}. Verification OTP sent.", user.Id);
 
             return new LoginResponse
             {
@@ -63,12 +66,11 @@ namespace _2_Services.Services
             await ValidateOtpCodeAsync(request.VerificationId, request.OTP);
 
             var verification = await _emailVerificationService.GetEmailVerificationByIdAsync(request.VerificationId);
-            var customer = await GetValidCustomerForAuthAsync(verification!.CustomerId);
+            var user = await GetValidUserForAuthAsync(verification!.CustomerId);
 
+            var (accessToken, refreshToken) = await GenerateAndSaveTokenPairAsync(user);
 
-            var (accessToken, refreshToken) = await GenerateAndSaveTokenPairAsync(customer);
-
-            _logger.LogInformation("Email verified successfully for Customer ID {CustomerId}", customer.Id);
+            _logger.LogInformation("Email verified successfully for User ID {UserId}", user.Id);
 
             return new VerifyOTPResponse
             {
@@ -82,11 +84,7 @@ namespace _2_Services.Services
         {
             ValidateRequestNotNull(request, "Refresh token request cannot be null.");
 
-            if (string.IsNullOrWhiteSpace(request.RefreshToken))
-            {
-                throw new BadRequestException("Refresh token cannot be empty.");
-            }
-
+           
             _logger.LogDebug("Attempting to refresh access token.");
 
             var storedToken = await _refreshTokenService.ValidateRefreshTokenAsync(request.RefreshToken);
@@ -96,12 +94,12 @@ namespace _2_Services.Services
                 throw new UnauthorizedException("Invalid refresh token.");
             }
 
-            var customer = await GetValidCustomerForAuthAsync(storedToken.CustomerId);
+            var user = await GetValidUserForAuthAsync(storedToken.CustomerId);
 
             await _refreshTokenService.RevokeRefreshTokenAsync(request.RefreshToken);
-            var (newAccessToken, newRefreshToken) = await GenerateAndSaveTokenPairAsync(customer);
+            var (newAccessToken, newRefreshToken) = await GenerateAndSaveTokenPairAsync(user);
 
-            _logger.LogInformation("Tokens refreshed successfully for Customer ID {CustomerId}", customer.Id);
+            _logger.LogInformation("Tokens refreshed successfully for User ID {UserId}", user.Id);
 
             return new RefreshTokenResponse
             {
@@ -127,8 +125,8 @@ namespace _2_Services.Services
 
             _logger.LogInformation("Forgot password requested for email: {Email}", DataMasker.MaskEmail(request.Email));
 
-            var customer = await _customerService.GetCustomerByEmailAsync(request.Email);
-            if (customer == null)
+            var user = await _userRepository.GetUserByEmailAsync(request.Email);
+            if (user == null)
             {
                 return new ForgotPasswordResponse
                 {
@@ -136,7 +134,7 @@ namespace _2_Services.Services
                 };
             }
 
-            var verification = await _emailVerificationService.CreateEmailVerificationAsync(customer.Id);
+            var verification = await _emailVerificationService.CreateEmailVerificationAsync(user.Id);
 
             return new ForgotPasswordResponse
             {
@@ -159,10 +157,18 @@ namespace _2_Services.Services
                 throw new BadRequestException("Invalid verification request.");
             }
 
-            await _customerService.ChangePasswordAsync(verification.CustomerId, request.NewPassword);
-            _logger.LogInformation("Password reset successfully for Customer ID: {CustomerId}", verification.CustomerId);
-        }
+            var user = await _userRepository.GetByIdAsync(verification.CustomerId);
+            if (user == null)
+            {
+                throw new NotFoundException($"User with ID {verification.CustomerId} not found.");
+            }
 
+            user.PasswordHash = _passwordHasher.Hash(request.NewPassword);
+            _userRepository.Update(user);
+            await _unitOfWork.SaveChangesAsync();
+
+            _logger.LogInformation("Password reset successfully for User ID: {UserId}", verification.CustomerId);
+        }
 
         private static void ValidateRequestNotNull<T>(T request, string errorMessage)
         {
@@ -188,33 +194,35 @@ namespace _2_Services.Services
             }
         }
 
-        private async Task<CustomerAuthDto> GetValidCustomerForAuthAsync(int customerId)
+        private async Task<User> GetValidUserForAuthAsync(int userId)
         {
-            var customer = await _customerService.GetCustomerAuthByIdAsync(customerId);
-            if (customer is null)
+            var user = await _userRepository.GetByIdAsync(userId);
+            if (user is null)
             {
-                _logger.LogWarning("Customer ID {CustomerId} not found during authentication process.", customerId);
-                throw new UnauthorizedException("Customer not found.");
+                _logger.LogWarning("User ID {UserId} not found during authentication process.", userId);
+                throw new UnauthorizedException("User not found.");
             }
 
-            return customer;
+            return user;
         }
 
-        private async Task<(string AccessToken, string RefreshToken)> GenerateAndSaveTokenPairAsync(CustomerAuthDto customer)
+        private async Task<(string AccessToken, string RefreshToken)> GenerateAndSaveTokenPairAsync(User user)
         {
+            bool isAdmin = await _userRepository.IsAdminAsync(user.Id);
+            string role = isAdmin ? "admin" : "customer";
+
             var accessToken = _tokenService.GenerateAccessToken(new AccessTokenData
             {
-                UserId = customer.Id,
-                Email = customer.Email,
-                Role = customer.Role
+                UserId = user.Id,
+                Email = user.Email,
+                Role = role
             });
 
             var refreshToken = _tokenService.GenerateRefreshToken();
 
-            await _refreshTokenService.AddRefreshTokenAsync(refreshToken,customer.Id);
+            await _refreshTokenService.AddRefreshTokenAsync(refreshToken, user.Id);
 
             return (accessToken, refreshToken);
         }
     }
-
 }

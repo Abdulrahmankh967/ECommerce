@@ -1,4 +1,4 @@
-﻿using _1_Repository.Data;
+using _1_Repository.Data;
 using _1_Repository.Interfaces;
 using _1_Repository.Context;
 using Microsoft.EntityFrameworkCore;
@@ -17,6 +17,7 @@ public class CustomerRepository : ICustomerRepository
     public async Task<List<Customer>> GetAllAsync()
     {   
         return await _context.Customers
+            .Include(c => c.Orders)
             .AsNoTracking()
             .ToListAsync();
     }
@@ -73,10 +74,8 @@ public class CustomerRepository : ICustomerRepository
         return await _context.Customers.FirstOrDefaultAsync(c => c.Email == email);
     }
 
-    async Task<bool> ICustomerRepository.IsEmailRegistered(string email)
+    public async Task<bool> IsEmailRegistered(string email)
     {
-        var result =await _context.Customers.AnyAsync(c=>c.Email.Equals(email,StringComparison.OrdinalIgnoreCase));
-
-        return result;
+        return await _context.Users.AnyAsync(u => u.Email.ToLower() == email.ToLower());
     }
 }

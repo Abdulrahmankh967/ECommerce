@@ -7,13 +7,20 @@ namespace _2_Services.Services
     public class CustomerService
     {
         private readonly ICustomerRepository _customerRepository;
+        private readonly IUserRepository _userRepository;
         private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<CustomerService> _logger;
         private readonly IPasswordHasher _passwordHasher;
 
-        public CustomerService(ICustomerRepository customerRepository, IUnitOfWork unitOfWork, ILogger<CustomerService> logger, IPasswordHasher passwordHasher)
+        public CustomerService(
+            ICustomerRepository customerRepository,
+            IUserRepository userRepository,
+            IUnitOfWork unitOfWork,
+            ILogger<CustomerService> logger,
+            IPasswordHasher passwordHasher)
         {
             _customerRepository = customerRepository;
+            _userRepository = userRepository;
             _unitOfWork = unitOfWork;
             _logger = logger;
             _passwordHasher = passwordHasher;
@@ -21,7 +28,6 @@ namespace _2_Services.Services
 
         public async Task<CustomerDto?> GetCustomerByIdAsync(int id)
         {
-
             _logger.LogDebug("Getting customer by ID {CustomerId}", id);
 
             if (id <= 0)
@@ -29,51 +35,68 @@ namespace _2_Services.Services
                 throw new BadRequestException("Customer ID must be greater than zero.");
             }
 
+            var isAdmin = await _userRepository.IsAdminAsync(id);
+            var role = isAdmin ? "admin" : "customer";
+
             var customer = await _customerRepository.GetByIdAsync(id);
 
-            if (customer is null)
+            if (customer is not null)
             {
-                _logger.LogWarning("Customer not found with ID {CustomerId}", id);
-
-                throw new NotFoundException($"Customer with ID {id} not found.");
+                _logger.LogDebug("Customer {CustomerId} retrieved successfully", id);
+                return CustomerMapper.MapToCustomerDto(customer, role);
             }
 
-            _logger.LogDebug("Customer {CustomerId} retrieved successfully", id);
+            // If not found in Customers, check if user is an Admin
+            var user = await _userRepository.GetByIdAsync(id);
+            if (user is not null && isAdmin)
+            {
+                _logger.LogDebug("Admin {AdminId} retrieved successfully as user", id);
+                return CustomerMapper.MapUserToCustomerDto(user, "admin");
+            }
 
-            return CustomerMapper.MapToCustomerDto(customer);
+            _logger.LogWarning("Customer or Admin not found with ID {CustomerId}", id);
+            throw new NotFoundException($"Customer with ID {id} not found.");
         }
 
         public async Task<CustomerAuthDto?> GetCustomerAuthByIdAsync(int id)
         {
-
             if (id <= 0)
             {
                 throw new BadRequestException("Customer ID must be greater than zero.");
             }
 
+            var isAdmin = await _userRepository.IsAdminAsync(id);
+            var role = isAdmin ? "admin" : "customer";
+
             var customer = await _customerRepository.GetByIdAsync(id);
 
-            if (customer is null)
+            if (customer is not null)
             {
-                throw new NotFoundException($"Customer with ID {id} not found.");
+                return CustomerMapper.MapToAuthDto(customer, role);
             }
 
-            return CustomerMapper.MapToAuthDto(customer);
+            var user = await _userRepository.GetByIdAsync(id);
+            if (user is not null && isAdmin)
+            {
+                return new CustomerAuthDto
+                {
+                    Id = user.Id,
+                    Email = user.Email,
+                    Role = "admin",
+                    PasswordHash = user.PasswordHash
+                };
+            }
+
+            throw new NotFoundException($"Customer with ID {id} not found.");
         }
 
         public async Task<CreateCustomerResponseDto> CreateCustomerAsync(CreateCustomerDto customer)
         {
             _logger.LogInformation("Creating new customer with email {Email}", DataMasker.MaskEmail(customer.Email));
 
+            var isRegistered = await _userRepository.IsEmailRegisteredAsync(customer.Email);
 
-            if (!Enum.TryParse<UserRole>(customer.Role, true, out var role))
-            {
-                throw new BadRequestException("Invalid role.");
-            }
-
-            var existingCustomer = await _customerRepository.GetCustomerByEmailAsync(customer.Email);
-
-            if (existingCustomer != null)
+            if (isRegistered)
             {
                 throw new ConflictException("A customer with this email already exists.");
             }
@@ -83,7 +106,6 @@ namespace _2_Services.Services
                 FullName = customer.FullName,
                 Email = customer.Email,
                 Phone = customer.Phone,
-                Role = role.ToString() ,
                 PasswordHash = _passwordHasher.Hash(customer.Password)
             };
 
@@ -92,31 +114,25 @@ namespace _2_Services.Services
 
             _logger.LogInformation("Customer {CustomerId} created successfully with email {Email}", newCustomer.Id, DataMasker.MaskEmail(newCustomer.Email));
 
-
-            return CustomerMapper.MapToCreateCustomerDto(newCustomer);
+            return CustomerMapper.MapToCreateCustomerDto(newCustomer, "customer");
         }
 
         public async Task<List<CustomerDto>> GetAllCustomersAsync()
         {
-
             _logger.LogDebug("Retrieving all customers");
 
             var customers = await _customerRepository.GetAllAsync();
 
             _logger.LogDebug("Retrieved {CustomerCount} customers", customers.Count);
 
-            return customers.Select(c => CustomerMapper.MapToCustomerDto(c))
-                .ToList();
-
+            return customers.Select(c => CustomerMapper.MapToCustomerDto(c, "customer")).ToList();
         }
 
         public async Task<CustomerDto?> GetCustomerWithOrdersAsync(int customerid)
         {
-
             if (customerid <= 0)
             {
-                throw new BadRequestException(
-                    "Customer ID must be greater than zero.");
+                throw new BadRequestException("Customer ID must be greater than zero.");
             }
 
             var customer = await _customerRepository.GetCustomerWithOrdersAsync(customerid);
@@ -126,35 +142,30 @@ namespace _2_Services.Services
                 throw new NotFoundException($"Customer with ID {customerid} not found.");
             }
 
-            return CustomerMapper.MapToCustomerDto(customer);
+            var isAdmin = await _userRepository.IsAdminAsync(customerid);
+            var role = isAdmin ? "admin" : "customer";
+
+            return CustomerMapper.MapToCustomerDto(customer, role);
         }
 
         public async Task<PagedResult<CustomerDto>> GetCustomersByPageAsync(int pageNumber, int pageSize)
         {
-
             _logger.LogDebug("Retrieving customers for page {PageNumber} with page size {PageSize}", pageNumber, pageSize);
 
             if (pageNumber <= 0)
             {
-                throw new BadRequestException(
-                    "Page number must be greater than zero.");
+                throw new BadRequestException("Page number must be greater than zero.");
             }
 
             if (pageSize <= 0)
             {
-                throw new BadRequestException(
-                    "Page size must be greater than zero.");
+                throw new BadRequestException("Page size must be greater than zero.");
             }
-
-
 
             var customers = await _customerRepository.GetCustomersByPage(pageNumber, pageSize);
             var totalCount = await _customerRepository.GetTotalCustomerCount();
 
-
-            List<CustomerDto> customerDtos = customers.Select(c => CustomerMapper.MapToCustomerDto(c))
-                .ToList();
-
+            List<CustomerDto> customerDtos = customers.Select(c => CustomerMapper.MapToCustomerDto(c, "customer")).ToList();
 
             _logger.LogDebug("Retrieved {CustomerCount} customers for page {PageNumber}", customerDtos.Count, pageNumber);
 
@@ -166,7 +177,6 @@ namespace _2_Services.Services
                 TotalCount = totalCount,
                 TotalPages = (int)Math.Ceiling((double)totalCount / pageSize)
             };
-
         }
 
         public async Task<CustomerAuthDto?> GetCustomerByEmailAsync(string email)
@@ -177,7 +187,7 @@ namespace _2_Services.Services
             }
             var customer = await _customerRepository.GetCustomerByEmailAsync(email);
 
-            return customer is null ? null : CustomerMapper.MapToAuthDto(customer);
+            return customer is null ? null : CustomerMapper.MapToAuthDto(customer, "customer");
         }
 
         public async Task DeleteCustomerAsync(int customerId)
@@ -210,15 +220,15 @@ namespace _2_Services.Services
                 throw new BadRequestException("New password cannot be empty.");
             }
 
-            var customer = await _customerRepository.GetByIdAsync(customerId);
+            var user = await _userRepository.GetByIdAsync(customerId);
 
-            if (customer is null)
+            if (user is null)
             {
-                throw new NotFoundException($"Customer with ID {customerId} not found.");
+                throw new NotFoundException($"User with ID {customerId} not found.");
             }
 
-            customer.PasswordHash = _passwordHasher.Hash(newPassword);
-            _customerRepository.Update(customer);
+            user.PasswordHash = _passwordHasher.Hash(newPassword);
+            _userRepository.Update(user);
             await _unitOfWork.SaveChangesAsync();
         }
 
@@ -248,7 +258,7 @@ namespace _2_Services.Services
 
             if (!string.IsNullOrWhiteSpace(dto.Email) && !string.Equals(dto.Email, customer.Email, StringComparison.OrdinalIgnoreCase))
             {
-                if (await _customerRepository.IsEmailRegistered(dto.Email))
+                if (await _userRepository.IsEmailRegisteredAsync(dto.Email))
                 {
                     throw new ConflictException("A customer with this email already exists.");
                 }
@@ -263,7 +273,7 @@ namespace _2_Services.Services
             {
                 throw new BadRequestException("Email cannot be null or empty.");
             }
-            return await _customerRepository.IsEmailRegistered(email);
+            return await _userRepository.IsEmailRegisteredAsync(email);
         }
     }
 }

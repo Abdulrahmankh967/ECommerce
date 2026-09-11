@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 public class CreateCustomerDto
 {
@@ -19,7 +19,5 @@ public class CreateCustomerDto
     [StringLength(100),MinLength(5)]
     public string Password { get; set; } = string.Empty;
 
-    [Required]
-    public string Role { get; set; } = string.Empty;
-
+    public string? Role { get; set; } = "customer";
 }

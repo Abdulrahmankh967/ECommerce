@@ -15,6 +15,7 @@ public class CategoryRepository : ICategoryRepository
     public async Task<List<Category>> GetAllAsync()
     {
         return await _context.Categories
+            .Include(c=>c.Products)
             .AsNoTracking()
             .ToListAsync();
     }

@@ -1,4 +1,4 @@
-﻿
+
 using _1_Repository.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -22,7 +22,7 @@ public class RefreshTokenConfiguration : IEntityTypeConfiguration<RefreshToken>
         builder.Property(r => r.RefreshTokenRevokedAt)
                .IsRequired(false);
 
-        builder.HasOne<Customer>()
+        builder.HasOne<User>()
                .WithMany()
                .HasForeignKey(r => r.CustomerId)
                .OnDelete(DeleteBehavior.Cascade);

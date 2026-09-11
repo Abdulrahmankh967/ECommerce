@@ -1,4 +1,4 @@
-﻿
+
 using _1_Repository.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -32,10 +32,10 @@ public class EmailVerificationConfiguration : IEntityTypeConfiguration<EmailVeri
         builder.Property(e => e.CreatedAt)
                .IsRequired();
 
-        builder.HasOne<Customer>()
-       .WithMany()
-       .HasForeignKey(r => r.CustomerId)
-       .OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne<User>()
+               .WithMany()
+               .HasForeignKey(r => r.CustomerId)
+               .OnDelete(DeleteBehavior.Cascade);
 
 
 
