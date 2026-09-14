@@ -1,10 +1,11 @@
 using _1_Repository.Data;
 using _1_Repository.Interfaces;
+using _2_Services.Interfaces;
 using Microsoft.Extensions.Logging;
 
 namespace _2_Services.Services
 {
-    public class CustomerService
+    public class CustomerService : ICustomerService
     {
         private readonly ICustomerRepository _customerRepository;
         private readonly IUserRepository _userRepository;

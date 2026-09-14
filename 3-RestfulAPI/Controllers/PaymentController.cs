@@ -1,3 +1,4 @@
+using _2_Services.Interfaces;
 using _2_Services.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -10,10 +11,10 @@ namespace _3_RestfulAPI.Controllers
     [ApiController]
     public class PaymentController : ControllerBase
     {
-        private readonly PaymentService _paymentService;
-        private readonly OrderService _orderService;
+        private readonly IPaymentService _paymentService;
+        private readonly IOrderService _orderService;
 
-        public PaymentController(PaymentService paymentService, OrderService orderService)
+        public PaymentController(IPaymentService paymentService, IOrderService orderService)
         {
             _paymentService = paymentService;
             _orderService = orderService;

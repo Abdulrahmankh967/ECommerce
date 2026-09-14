@@ -1,4 +1,4 @@
-﻿using _1_Repository.Data;
+using _1_Repository.Data;
 using _1_Repository.Interfaces;
 using _1_Repository.Context;
 using Microsoft.EntityFrameworkCore;
@@ -15,13 +15,17 @@ public class CategoryRepository : ICategoryRepository
     public async Task<List<Category>> GetAllAsync()
     {
         return await _context.Categories
-            .Include(c=>c.Products)
+            .Include(c => c.Products)
+            .Include(c => c.SubCategories)
             .AsNoTracking()
             .ToListAsync();
     }
     public async Task<Category?> GetByIdAsync(int id)
     {
-        return await _context.Categories.FindAsync(id);
+        return await _context.Categories
+            .Include(c => c.Products)
+            .Include(c => c.SubCategories)
+            .FirstOrDefaultAsync(c => c.Id == id);
     }
     public async Task AddAsync(Category entity)
     {

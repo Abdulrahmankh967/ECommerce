@@ -1,3 +1,4 @@
+using _2_Services.Interfaces;
 using _2_Services.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -9,9 +10,9 @@ namespace _3_RestfulAPI.Controllers
     [ApiController]
     public class SupplierController : ControllerBase
     {
-        private readonly SupplierService _supplierService;
+        private readonly ISupplierService _supplierService;
 
-        public SupplierController(SupplierService supplierService)
+        public SupplierController(ISupplierService supplierService)
         {
             _supplierService = supplierService;
         }

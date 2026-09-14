@@ -359,20 +359,26 @@ namespace _1_Repository.Migrations
 
             modelBuilder.Entity("_1_Repository.Data.Category", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<int>("CategoryId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("CategoryId"));
 
-                    b.Property<string>("Name")
+                    b.Property<string>("CategoryName")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("NVARCHAR");
 
-                    b.HasKey("Id");
+                    b.Property<int?>("ParentCategoryId")
+                        .HasColumnType("int");
 
-                    b.ToTable("Categories");
+                    b.HasKey("CategoryId");
+
+                    b.HasIndex("ParentCategoryId")
+                        .HasDatabaseName("IX_Categories_ParentCategoryId");
+
+                    b.ToTable("Categories", (string)null);
                 });
 
             modelBuilder.Entity("_1_Repository.Data.Coupon", b =>
@@ -882,6 +888,16 @@ namespace _1_Repository.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("_1_Repository.Data.Category", b =>
+                {
+                    b.HasOne("_1_Repository.Data.Category", "ParentCategory")
+                        .WithMany("SubCategories")
+                        .HasForeignKey("ParentCategoryId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("ParentCategory");
+                });
+
             modelBuilder.Entity("_1_Repository.Data.CouponUsage", b =>
                 {
                     b.HasOne("_1_Repository.Data.Coupon", "Coupon")
@@ -1059,6 +1075,8 @@ namespace _1_Repository.Migrations
             modelBuilder.Entity("_1_Repository.Data.Category", b =>
                 {
                     b.Navigation("Products");
+
+                    b.Navigation("SubCategories");
                 });
 
             modelBuilder.Entity("_1_Repository.Data.Coupon", b =>

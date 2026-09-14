@@ -1,4 +1,5 @@
 using _1_Repository.Interfaces;
+using _2_Services.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -6,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace _2_Services.Services
 {
-    public class SupplierService
+    public class SupplierService : ISupplierService
     {
         private readonly ISupplierRepository _supplierRepository;
         private readonly IUnitOfWork _unitOfWork;

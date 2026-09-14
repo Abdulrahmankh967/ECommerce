@@ -6,7 +6,7 @@ namespace _1_Repository.Data
 
         public int OrderId { get; set; }
 
-        public DateTime? ShipmentDate { get; set; }
+        public DateTime? Date { get; set; }
 
         public DateTime? EstimatedDeliveryDate { get; set; }
 

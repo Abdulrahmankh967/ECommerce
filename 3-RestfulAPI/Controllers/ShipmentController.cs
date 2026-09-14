@@ -1,3 +1,4 @@
+using _2_Services.Interfaces;
 using _2_Services.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -10,10 +11,10 @@ namespace _3_RestfulAPI.Controllers
     [ApiController]
     public class ShipmentController : ControllerBase
     {
-        private readonly ShipmentService _shipmentService;
-        private readonly OrderService _orderService;
+        private readonly IShipmentService _shipmentService;
+        private readonly IOrderService _orderService;
 
-        public ShipmentController(ShipmentService shipmentService, OrderService orderService)
+        public ShipmentController(IShipmentService shipmentService, IOrderService orderService)
         {
             _shipmentService = shipmentService;
             _orderService = orderService;

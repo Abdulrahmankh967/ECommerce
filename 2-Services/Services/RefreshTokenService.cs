@@ -1,8 +1,9 @@
-﻿using Microsoft.Extensions.Logging;
+using _2_Services.Interfaces;
+using Microsoft.Extensions.Logging;
 
 namespace _2_Services.Services
 {
-    public class RefreshTokenService
+    public class RefreshTokenService : IRefreshTokenService
     {
         private readonly IRefreshTokenRepository _refreshTokenRepository;
         private readonly IUnitOfWork _unitOfWork;

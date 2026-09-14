@@ -1,4 +1,5 @@
 using _2_Services.DTOs;
+using _2_Services.Interfaces;
 using _2_Services.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -10,16 +11,16 @@ namespace _3_RestfulAPI.Controllers
     [ApiController]
     public class ProductController : ControllerBase
     {
-        private readonly ProductService _productService;
+        private readonly IProductService _productService;
 
-        public ProductController(ProductService productService)
+        public ProductController(IProductService productService)
         {
             _productService = productService;
         }
 
         [HttpGet]
         [EnableRateLimiting("HighCostLimiter")]
-        [ProducesResponseType(typeof(ProductDTO), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(IEnumerable<ProductDTO>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status429TooManyRequests)]

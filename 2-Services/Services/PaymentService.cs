@@ -1,10 +1,11 @@
 using _1_Repository.Data;
 using _1_Repository.Interfaces;
+using _2_Services.Interfaces;
 using System.Threading.Tasks;
 
 namespace _2_Services.Services
 {
-    public class PaymentService
+    public class PaymentService : IPaymentService
     {
         private readonly IPaymentRepository _paymentRepository;
 

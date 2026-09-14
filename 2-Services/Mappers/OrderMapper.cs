@@ -14,12 +14,12 @@ public class OrderMapper
         CouponCode = order.CouponUsage?.Coupon?.Code ?? string.Empty,
         ShippingAddress = order.ShippingAddress is null ? null : new ShippingAddressDto
         {
-            ShippingRecipientName = order.ShippingAddress.ShippingRecipientName,
-            ShippingPhone = order.ShippingAddress.ShippingPhone,
-            ShippingCity = order.ShippingAddress.ShippingCity,
-            ShippingStreet = order.ShippingAddress.ShippingStreet,
-            ShippingBuildingNumber = order.ShippingAddress.ShippingBuildingNumber,
-            ShippingPostalCode = order.ShippingAddress.ShippingPostalCode,
+            ShippingRecipientName = order.ShippingAddress.RecipientName,
+            ShippingPhone = order.ShippingAddress.Phone,
+            ShippingCity = order.ShippingAddress.City,
+            ShippingStreet = order.ShippingAddress.Street,
+            ShippingBuildingNumber = order.ShippingAddress.BuildingNumber,
+            ShippingPostalCode = order.ShippingAddress.PostalCode,
         },
         Items = order.OrderItems.Select(oi => new OrderItemDetailDto
         {

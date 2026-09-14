@@ -1,5 +1,6 @@
 using _1_Repository.Data;
 using _1_Repository.Interfaces;
+using _2_Services.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace _2_Services.Services
 {
-    public class WishlistService
+    public class WishlistService : IWishlistService
     {
         private readonly IWishlistRepository _wishlistRepository;
         private readonly IProductRepository _productRepository;

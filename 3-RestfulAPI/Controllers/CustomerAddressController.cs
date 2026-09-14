@@ -1,4 +1,5 @@
-﻿using _2_Services.Services;
+using _2_Services.Interfaces;
+using _2_Services.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -10,9 +11,9 @@ namespace _3_RestfulAPI.Controllers
     [Authorize]
     public class CustomerAddressController : ControllerBase
     {
-        private readonly CustomerAddressService _addressService;
+        private readonly ICustomerAddressService _addressService;
 
-        public CustomerAddressController(CustomerAddressService addressService)
+        public CustomerAddressController(ICustomerAddressService addressService)
         {
             _addressService = addressService;
         }

@@ -1,4 +1,5 @@
-﻿using _2_Services.Services;
+using _2_Services.Interfaces;
+using _2_Services.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -11,9 +12,9 @@ namespace _3_RestfulAPI.Controllers
     [ApiController]
     public class CustomersController : ControllerBase
     {
-        private readonly CustomerService _customerService;
+        private readonly ICustomerService _customerService;
 
-        public CustomersController(CustomerService customerService)
+        public CustomersController(ICustomerService customerService)
         {
             _customerService = customerService;
         }

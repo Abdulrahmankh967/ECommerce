@@ -1,6 +1,7 @@
 using _1_Repository.Context;
 using _1_Repository.Data;
 using _1_Repository.Repositories;
+using _2_Services.Interfaces;
 using _2_Services.Services;
 using _3_RestfulAPI.Authorization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -232,12 +233,12 @@ builder.Services.Scan(scan => scan
     .AsImplementedInterfaces()
     .WithScopedLifetime());
 
-// Service
+// Services
 builder.Services.Scan(scan => scan
     .FromAssemblyOf<CustomerService>()
     .AddClasses(classes => classes.Where(type =>
-        type.Name.EndsWith("Service")))
-    .AsSelf()
+        type.Name.EndsWith("Service") && !typeof(IHostedService).IsAssignableFrom(type)))
+    .AsImplementedInterfaces()
     .WithScopedLifetime());
 
 
@@ -325,7 +326,7 @@ app.UseExceptionHandler(errorApp =>
         };
 
         var message = statusCode == 500
-            ? "An unexpected error occurred."
+            ? (app.Environment.IsDevelopment() ? exception?.ToString() : "An unexpected error occurred.")
             : exception?.Message;
 
         context.Response.StatusCode = statusCode;

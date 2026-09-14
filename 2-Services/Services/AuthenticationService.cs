@@ -1,15 +1,16 @@
 using _1_Repository.Data;
 using _1_Repository.Interfaces;
+using _2_Services.Interfaces;
 using Microsoft.Extensions.Logging;
 
 namespace _2_Services.Services
 {
-    public class AuthenticationService
+    public class AuthenticationService : IAuthenticationService
     {
         private readonly IUserRepository _userRepository;
         private readonly IUnitOfWork _unitOfWork;
-        private readonly EmailVerificationService _emailVerificationService;
-        private readonly RefreshTokenService _refreshTokenService;
+        private readonly IEmailVerificationService _emailVerificationService;
+        private readonly IRefreshTokenService _refreshTokenService;
         private readonly IPasswordHasher _passwordHasher;
         private readonly ITokenService _tokenService;
         private readonly ILogger<AuthenticationService> _logger;
@@ -17,8 +18,8 @@ namespace _2_Services.Services
         public AuthenticationService(
             IUserRepository userRepository,
             IUnitOfWork unitOfWork,
-            EmailVerificationService emailVerificationService,
-            RefreshTokenService refreshTokenService,
+            IEmailVerificationService emailVerificationService,
+            IRefreshTokenService refreshTokenService,
             IPasswordHasher passwordHasher,
             ITokenService tokenService,
             ILogger<AuthenticationService> logger)

@@ -1,11 +1,12 @@
 using _1_Repository.Data;
 using _1_Repository.Interfaces;
+using _2_Services.Interfaces;
 using Microsoft.Extensions.Logging;
 using System.Runtime.CompilerServices;
 
 namespace _2_Services.Services
 {
-    public class CartService
+    public class CartService : ICartService
     {
         private readonly ICartRepository _cartRepository;
         private readonly IProductRepository _productRepository;

@@ -1,3 +1,4 @@
+using _2_Services.Interfaces;
 using _2_Services.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -9,10 +10,10 @@ namespace _3_RestfulAPI.Controllers
     [Route("api/[controller]")]
     public class AuthController : ControllerBase
     {
-        private readonly AuthenticationService _authenticationService;
-        private readonly RefreshTokenService _refreshTokenService;
+        private readonly IAuthenticationService _authenticationService;
+        private readonly IRefreshTokenService _refreshTokenService;
 
-        public AuthController(AuthenticationService authenticationService,RefreshTokenService refreshTokenService)
+        public AuthController(IAuthenticationService authenticationService, IRefreshTokenService refreshTokenService)
         {
             _authenticationService = authenticationService;
             _refreshTokenService = refreshTokenService;

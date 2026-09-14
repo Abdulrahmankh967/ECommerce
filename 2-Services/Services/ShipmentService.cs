@@ -1,11 +1,12 @@
 using _1_Repository.Data;
 using _1_Repository.Interfaces;
+using _2_Services.Interfaces;
 using System;
 using System.Threading.Tasks;
 
 namespace _2_Services.Services
 {
-    public class ShipmentService
+    public class ShipmentService : IShipmentService
     {
         private readonly IShipmentRepository _shipmentRepository;
         private readonly IUnitOfWork _unitOfWork;
@@ -61,7 +62,7 @@ namespace _2_Services.Services
                 shipment.Carrier = dto.Carrier;
 
             if (dto.ShipmentDate.HasValue)
-                shipment.ShipmentDate = dto.ShipmentDate;
+                shipment.Date = dto.ShipmentDate;
 
             if (dto.EstimatedDeliveryDate.HasValue)
                 shipment.EstimatedDeliveryDate = dto.EstimatedDeliveryDate;

@@ -5,7 +5,7 @@
 
 
 # ignore frontend directory
-frontend/
+
 
 # User-specific files
 *.rsuser

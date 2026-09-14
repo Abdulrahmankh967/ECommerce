@@ -13,26 +13,26 @@ namespace _1_Repository.Config
             builder.Property(sa => sa.Id)
                 .ValueGeneratedOnAdd();
 
-            builder.Property(sa => sa.ShippingRecipientName)
+            builder.Property(sa => sa.RecipientName)
                 .HasMaxLength(150)
                 .IsRequired();
 
-            builder.Property(sa => sa.ShippingPhone)
+            builder.Property(sa => sa.Phone)
                 .HasMaxLength(50)
                 .IsRequired();
 
-            builder.Property(sa => sa.ShippingCity)
+            builder.Property(sa => sa.City)
                 .HasMaxLength(100)
                 .IsRequired();
 
-            builder.Property(sa => sa.ShippingStreet)
+            builder.Property(sa => sa.Street)
                 .HasMaxLength(200)
                 .IsRequired();
 
-            builder.Property(sa => sa.ShippingBuildingNumber)
+            builder.Property(sa => sa.BuildingNumber)
                 .HasMaxLength(50);
 
-            builder.Property(sa => sa.ShippingPostalCode)
+            builder.Property(sa => sa.PostalCode)
                 .HasMaxLength(20);
         }
     }

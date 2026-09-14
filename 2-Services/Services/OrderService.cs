@@ -1,27 +1,28 @@
 using _1_Repository.Data;
 using _1_Repository.Interfaces;
+using _2_Services.Interfaces;
 
 namespace _2_Services.Services
 {
-    public class OrderService
+    public class OrderService : IOrderService
     {
         private readonly IOrderRepository _orderRepository;
         private readonly ICartRepository _cartRepository;
         private readonly IProductRepository _productRepository;
-        private readonly CouponService _couponService;
-        private readonly CustomerService _customerService;
+        private readonly ICouponService _couponService;
+        private readonly ICustomerService _customerService;
         private readonly IUnitOfWork _unitOfWork;
-        private readonly OutBoxMessageService _outBoxMessageService;
+        private readonly IOutBoxMessageService _outBoxMessageService;
         private readonly ICustomerAddressRepository _addressRepository;
 
         public OrderService(
             IOrderRepository orderRepository,
             ICartRepository cartRepository,
             IProductRepository productRepository,
-            CouponService couponService,
-            CustomerService customerService,
+            ICouponService couponService,
+            ICustomerService customerService,
             IUnitOfWork unitOfWork,
-            OutBoxMessageService outBoxMessageService,
+            IOutBoxMessageService outBoxMessageService,
             ICustomerAddressRepository addressRepository)
         {
             _orderRepository = orderRepository;
@@ -139,12 +140,12 @@ namespace _2_Services.Services
         {
             return new ShippingAddress
             {
-                ShippingRecipientName = address.RecipientName,
-                ShippingPhone = address.Phone,
-                ShippingCity = address.City,
-                ShippingStreet = address.Street,
-                ShippingBuildingNumber = address.BuildingNumber,
-                ShippingPostalCode = address.PostalCode,
+                RecipientName = address.RecipientName,
+                Phone = address.Phone,
+                City = address.City,
+                Street = address.Street,
+                BuildingNumber = address.BuildingNumber,
+                PostalCode = address.PostalCode,
             };
         }
 
@@ -231,7 +232,7 @@ namespace _2_Services.Services
                 Payment = new Payment
                 {
                     Amount = finalTotal,
-                    PaymentDate = DateTime.UtcNow,
+                    Date = DateTime.UtcNow,
                     Method = dto.PaymentMethod,
                     Status = (int)PaymentStatus.Pending
                 },

@@ -4,17 +4,17 @@ namespace _1_Repository.Data
     {
         public int Id { get; set; }
 
-        public string ShippingRecipientName { get; set; } = null!;
+        public string RecipientName { get; set; } = null!;
 
-        public string ShippingPhone { get; set; } = null!;
+        public string Phone { get; set; } = null!;
 
-        public string ShippingCity { get; set; } = null!;
+        public string City { get; set; } = null!;
 
-        public string ShippingStreet { get; set; } = null!;
+        public string Street { get; set; } = null!;
 
-        public string? ShippingBuildingNumber { get; set; }
+        public string? BuildingNumber { get; set; }
 
-        public string? ShippingPostalCode { get; set; }
+        public string? PostalCode { get; set; }
 
         // Navigation back to the owning Order (one-to-one)
         public Order Order { get; set; } = null!;

@@ -1,3 +1,4 @@
+using _2_Services.Interfaces;
 using _2_Services.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -10,9 +11,9 @@ namespace _3_RestfulAPI.Controllers
     [ApiController]
     public class WishlistController : ControllerBase
     {
-        private readonly WishlistService _wishlistService;
+        private readonly IWishlistService _wishlistService;
 
-        public WishlistController(WishlistService wishlistService)
+        public WishlistController(IWishlistService wishlistService)
         {
             _wishlistService = wishlistService;
         }

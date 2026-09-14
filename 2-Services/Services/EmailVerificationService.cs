@@ -1,13 +1,14 @@
-﻿using System.Security.Cryptography;
+using _2_Services.Interfaces;
+using System.Security.Cryptography;
 using Microsoft.Extensions.Logging;
 
 namespace _2_Services.Services
 {
-    public class EmailVerificationService
+    public class EmailVerificationService : IEmailVerificationService
     {
         private readonly IEmailVerificationRepository _emailVerificationRepository;
-        private readonly EmailService _emailService;
-        private readonly CustomerService _customerService;
+        private readonly IEmailService _emailService;
+        private readonly ICustomerService _customerService;
         private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<EmailVerificationService> _logger;
 
@@ -17,8 +18,8 @@ namespace _2_Services.Services
         public EmailVerificationService(
             IEmailVerificationRepository emailVerificationRepository,
             IUnitOfWork unitOfWork,
-            EmailService emailService,
-            CustomerService customerService,
+            IEmailService emailService,
+            ICustomerService customerService,
             ILogger<EmailVerificationService> logger)
         {
             _emailVerificationRepository = emailVerificationRepository;

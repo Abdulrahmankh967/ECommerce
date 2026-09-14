@@ -1,11 +1,12 @@
 using _1_Repository.Data;
 using _1_Repository.Interfaces;
 using _2_Services.DTOs;
+using _2_Services.Interfaces;
 using Microsoft.Extensions.Logging;
 
 namespace _2_Services.Services
 {
-    public class ProductService
+    public class ProductService : IProductService
     {
         private readonly IProductRepository _productRepository;
         private readonly ICategoryRepository _categoryRepository;
