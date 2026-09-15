@@ -47,4 +47,8 @@ export const productsApi = {
   deleteReview: async (reviewId: number): Promise<void> => {
     await apiClient.delete(`/Review/${reviewId}`);
   },
+  searchProducts: async (query: string): Promise<Product[]> => {
+    const response = await apiClient.get<Product[]>(`/Product/search?query=${encodeURIComponent(query)}`);
+    return response.data;
+  },
 };

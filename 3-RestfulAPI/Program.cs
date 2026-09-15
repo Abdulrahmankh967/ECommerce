@@ -14,14 +14,28 @@ using Serilog;
 using System.Security.Claims;
 using System.Text;
 using System.Threading.RateLimiting;
+using Elastic.Clients.Elasticsearch;
+using _2_Services.DTOs;
 
 
 var builder = WebApplication.CreateBuilder(args);
 
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Debug()
-    .WriteTo.Seq(builder.Configuration["Seq:Url"]!)
+    .WriteTo.Console()
+    .WriteTo.Seq(builder.Configuration["Seq:Url"] ?? "http://localhost:5341")
     .CreateLogger();
+
+
+var elasticsearchUrl = builder.Configuration["Elasticsearch:Url"] ?? "http://localhost:9200";
+var settings = new ElasticsearchClientSettings(new Uri(elasticsearchUrl))
+    .DefaultIndex("products")
+    .DefaultMappingFor<ProductDTO>(m => m
+        .IndexName("products")
+        .IdProperty(p => p.Id));
+
+var client = new ElasticsearchClient(settings);
+builder.Services.AddSingleton(client);
 
 
 builder.Host.UseSerilog();
@@ -249,26 +263,7 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("CustomerOwnerOrAdmin", policy =>
         policy.Requirements.Add(new CustomerOwnerOrAdminRequirement()));
 });
-//test
-//builder.Services.AddCors(options =>
-//{
-//    options.AddPolicy("CustomerApiPolicy", policy =>
-//    {
-//        policy
-//            .SetIsOriginAllowed(origin =>
-//            {
-//                if (string.IsNullOrWhiteSpace(origin)) 
-//                    return false;
 
-//                if (!Uri.TryCreate(origin, UriKind.Absolute, out var uri)) 
-//                    return false;
-
-//                return uri.Host is "localhost" or "127.0.0.1";
-//            })
-//            .AllowAnyHeader()
-//            .AllowAnyMethod()
-//            .AllowCredentials();
-//    });
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp", policy =>

@@ -1,6 +1,7 @@
 using _2_Services.DTOs;
 using _2_Services.Interfaces;
 using _2_Services.Services;
+using Elastic.Clients.Elasticsearch;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -12,12 +13,39 @@ namespace _3_RestfulAPI.Controllers
     public class ProductController : ControllerBase
     {
         private readonly IProductService _productService;
+        private readonly ElasticsearchClient _elasticsearchClient;
 
-        public ProductController(IProductService productService)
+        public ProductController(IProductService productService, ElasticsearchClient elasticsearchClient)
         {
             _productService = productService;
+            _elasticsearchClient = elasticsearchClient;
         }
 
+        
+     
+        
+        [HttpGet("search")]
+        [EnableRateLimiting("LowCostLimiter")]
+        [ProducesResponseType(typeof(IEnumerable<ProductDTO>), StatusCodes.Status200OK)]
+        public async Task<IActionResult> SearchProducts([FromQuery] string query)
+        {
+            var products = await _productService.SearchProductsAsync(query);
+            return Ok(products);
+        }
+        
+        [HttpPost("reindex")]
+        [Authorize(Roles = "admin")]
+        public async Task<IActionResult> ReindexProducts()
+        {
+            var result = await _productService.ReindexAllProductsAsync();
+    
+            if (!result)
+                return StatusCode(StatusCodes.Status500InternalServerError, "Failed to reindex products.");
+
+            return Ok(new { status = "Products indexed successfully into Elasticsearch!" });
+        }
+        
+        
         [HttpGet]
         [EnableRateLimiting("HighCostLimiter")]
         [ProducesResponseType(typeof(IEnumerable<ProductDTO>), StatusCodes.Status200OK)]

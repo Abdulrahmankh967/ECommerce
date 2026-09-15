@@ -10,5 +10,8 @@ namespace _2_Services.Interfaces
         Task<ProductDTO> CreateProductAsync(CreateProductDto dto);
         Task<ProductDTO?> UpdateProductAsync(int id, UpdateProductDto dto);
         Task<bool> DeleteProductAsync(int id);
+        
+        Task<IEnumerable<ProductDTO>> SearchProductsAsync(string query);
+        Task<bool> ReindexAllProductsAsync();
     }
 }
